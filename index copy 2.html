@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Medication Reference — IMH Clinical Tool</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.55;
+}
+:root {
+  --bg-page:#f0f4f8; --bg-sidebar:#ffffff; --bg-main:#ffffff; --bg-card:#f8fafc;
+  --bg-header:#1e293b; --bg-sticky:rgba(255,255,255,0.97); --border:#e2e8f0;
+  --border-focus:#3b82f6; --text-primary:#0f172a; --text-secondary:#475569;
+  --text-muted:#94a3b8; --accent:#3b82f6; --accent-hover:#2563eb; --accent-light:#dbeafe;
+  --danger:#ef4444; --green:#22c55e; --tag-bg:#e0e7ff; --tag-text:#3730a3;
+  --summary-bg:#f1f5f9; --summary-hover:#e2e8f0; --cat-pill-bg:#e0f2fe; --cat-pill-text:#0369a1;
+  --sidebar-item-hover:#f1f5f9; --sidebar-item-active:#dbeafe; --sidebar-item-active-text:#1d4ed8;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08); --shadow-md:0 4px 12px rgba(0,0,0,0.10);
+  --radius:8px; --transition:0.15s ease; --content-max:980px;
+}
+[data-theme="dark"] {
+  --bg-page:#0f172a; --bg-sidebar:#1e293b; --bg-main:#1e293b; --bg-card:#263348;
+  --bg-header:#0f172a; --bg-sticky:rgba(30,41,59,0.97); --border:#334155;
+  --text-primary:#f1f5f9; --text-secondary:#94a3b8; --text-muted:#64748b;
+  --accent:#60a5fa; --accent-hover:#93c5fd; --accent-light:#1e3a5f;
+  --danger:#f87171; --green:#4ade80; --tag-bg:#1e3a5f; --tag-text:#93c5fd;
+  --summary-bg:#263348; --summary-hover:#2d3f56; --cat-pill-bg:#0c2a4a; --cat-pill-text:#38bdf8;
+  --sidebar-item-hover:#263348; --sidebar-item-active:#1e3a5f; --sidebar-item-active-text:#93c5fd;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.3); --shadow-md:0 4px 12px rgba(0,0,0,0.4);
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font-family: inherit; }
+.app-shell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+.app-shell.mobile-mode { grid-template-columns: 1fr; }
+@media (max-width: 768px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar.open { display: flex; position: fixed; z-index: 200; top: 0; left: 0; height: 100vh; width: 280px; box-shadow: var(--shadow-md); }
+  .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; }
+  .mobile-overlay.visible { display: block; }
+}
+.app-shell.mobile-mode .sidebar { display: none; }
+.app-shell.mobile-mode .sidebar.open { display: flex; position: fixed; z-index: 200; top: 0; left: 0; height: 100vh; width: 280px; box-shadow: var(--shadow-md); }
+.app-shell.mobile-mode .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; }
+.app-shell.mobile-mode .mobile-overlay.visible { display: block; }
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg-header);
+  color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.25rem;
+  height: 52px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-logo { display:flex; align-items:center; gap:0.5rem; font-size:1rem; font-weight:700; color:#f8fafc; flex-shrink:0; }
+.logo-icon { width:28px; height:28px; background:linear-gradient(135deg,#3b82f6,#6366f1); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:white; }
+.topbar-sub { font-size:0.75rem; color:#94a3b8; font-weight:400; }
+.topbar-spacer { flex:1; }
+.mobile-menu-btn { display:none; background:transparent; border:1px solid rgba(255,255,255,0.2); color:#f1f5f9; padding:0.35rem 0.6rem; border-radius:8px; font-size:0.8rem; align-items:center; gap:0.35rem; }
+.topbar-btn { background:transparent; border:1px solid rgba(255,255,255,0.2); color:#f1f5f9; padding:0.35rem 0.75rem; border-radius:8px; font-size:0.8rem; display:flex; align-items:center; gap:0.35rem; transition:background var(--transition), border-color var(--transition); }
+.topbar-btn:hover { background:rgba(255,255,255,0.1); }
+.topbar-btn.active { background:rgba(96,165,250,0.25); }
+.topbar-btn:focus-visible, .mobile-menu-btn:focus-visible { outline:2px solid rgba(147,197,253,0.9); outline-offset:2px; }
+#themeBtn {
+  position: relative;
+  min-width: 92px;
+  justify-content: center;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  border-color: rgba(148, 163, 184, 0.55);
+  background: linear-gradient(180deg, rgba(30,41,59,0.2), rgba(15,23,42,0.35));
+}
+#themeBtn:hover { border-color: rgba(147, 197, 253, 0.7); }
+#themeBtn .theme-label { font-weight: 600; letter-spacing: 0.02em; }
+@media (max-width:768px) { .mobile-menu-btn { display:flex !important; } }
+.app-shell.mobile-mode .mobile-menu-btn { display:flex !important; }
+.sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 52px);
+  position: sticky;
+  top: 52px;
+  overflow: hidden;
+}
+.sidebar-search { padding:0.875rem; border-bottom:1px solid var(--border); }
+.search-wrap { position:relative; }
+.search-wrap svg { position:absolute; left:0.6rem; top:50%; transform:translateY(-50%); color:var(--text-muted); }
+.search-input { width:100%; padding:0.5rem 0.75rem 0.5rem 2rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); color:var(--text-primary); font-size:0.875rem; outline:none; }
+.search-input:focus { border-color:var(--border-focus); }
+.search-input::placeholder { color:var(--text-muted); }
+.sidebar-nav { flex:1; overflow-y:auto; padding:0.5rem 0; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.sidebar-nav::-webkit-scrollbar { width:4px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+.cat-group > details > summary {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0.55rem 0.875rem; font-size:0.72rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted);
+  cursor:pointer; user-select:none; list-style:none; background:var(--bg-sidebar);
+  border:none; transition:background var(--transition);
+}
+.cat-group > details > summary:hover { background:var(--summary-hover); color:var(--text-secondary); }
+.cat-group > details > summary::-webkit-details-marker { display:none; }
+.cat-count { background:var(--summary-bg); border-radius:10px; padding:0.1rem 0.45rem; font-size:0.65rem; font-weight:600; color:var(--text-muted); margin-left:auto; margin-right:0.4rem; }
+.cat-chevron { font-size:0.65rem; color:var(--text-muted); transition:transform 0.2s ease; }
+.cat-group > details[open] > summary .cat-chevron { transform:rotate(90deg); }
+.med-list { list-style:none; padding:0 0 0.25rem 0; }
+.med-item {
+  display:flex; align-items:center; padding:0.45rem 0.875rem 0.45rem 1.5rem;
+  font-size:0.85rem; color:var(--text-secondary); cursor:pointer; border:none;
+  background:none; width:100%; text-align:left; transition:background var(--transition), color var(--transition); position:relative;
+}
+.med-item::before { content:''; position:absolute; left:0.875rem; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:var(--border); transition:background var(--transition); }
+.med-item:hover { background:var(--sidebar-item-hover); color:var(--text-primary); }
+.med-item:hover::before { background:var(--accent); }
+.med-item.active { background:var(--sidebar-item-active); color:var(--sidebar-item-active-text); font-weight:600; }
+.med-item.active::before { background:var(--accent); }
+.depot-sub { display:block; font-size:0.65rem; color:var(--text-muted); margin-top:0.05rem; }
+.main-content { overflow-y:auto; height:calc(100vh - 52px); position:relative; scrollbar-width:thin; scrollbar-color:var(--border) transparent; background:var(--bg-main); }
+.main-content::-webkit-scrollbar { width:6px; }
+.main-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+#medDisplay { max-width:var(--content-max); margin:0 auto; width:100%; }
+.welcome-screen { display:flex; align-items:center; justify-content:center; min-height:100%; padding:2rem 1.25rem; color:var(--text-muted); }
+.welcome-card { width:min(680px, 100%); border:1px solid var(--border); border-radius:14px; background:linear-gradient(180deg, var(--bg-card), var(--bg-main)); box-shadow:var(--shadow-sm); padding:2rem 1.5rem; text-align:center; }
+.welcome-icon { width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg,#3b82f6,#6366f1); display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; font-size:1.5rem; color:white; }
+.welcome-screen h2 { font-size:1.25rem; color:var(--text-secondary); margin-bottom:0.5rem; }
+.welcome-screen p { font-size:0.95rem; max-width:500px; margin:0 auto; }
+.shortcut-chips { margin-top:1rem; display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; }
+.shortcut-chip { font-size:0.75rem; font-weight:600; color:var(--text-secondary); background:var(--summary-bg); border:1px solid var(--border); border-radius:999px; padding:0.24rem 0.6rem; }
+.med-sticky-header { position:sticky; top:0; z-index:50; background:var(--bg-sticky); border-bottom:1px solid var(--border); padding:0.875rem 1.5rem; display:flex; align-items:center; gap:1rem; backdrop-filter:blur(8px); box-shadow:var(--shadow-sm); flex-wrap:wrap; max-width:var(--content-max); margin:0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); border-bottom-left-radius:12px; border-bottom-right-radius:12px; }
+.med-sticky-header h1 { font-size:1.2rem; font-weight:700; letter-spacing:-0.01em; color:var(--text-primary); flex:1; margin:0; }
+.cat-pill { font-size:0.7rem; font-weight:600; padding:0.2rem 0.6rem; border-radius:20px; background:var(--cat-pill-bg); color:var(--cat-pill-text); white-space:nowrap; }
+.header-actions { display:grid; align-items:center; gap:0.4rem; flex-shrink:0; grid-auto-flow:column; grid-auto-columns:minmax(96px, 1fr); }
+.btn-copy { display:inline-flex; align-items:center; justify-content:center; gap:0.25rem; padding:0 0.65rem; min-height:30px; border-radius:7px; font-size:0.72rem; font-weight:600; border:1px solid var(--border); background:var(--tag-bg); color:var(--tag-text); cursor:pointer; transition:transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition); white-space:nowrap; text-decoration:none; }
+.btn-copy:hover { background:var(--accent); color:white; }
+.btn-copy.copied { background:var(--green); color:white; }
+.btn-hh { display:inline-flex; align-items:center; justify-content:center; gap:0.25rem; padding:0 0.65rem; min-height:30px; border-radius:7px; font-size:0.72rem; font-weight:600; border:1px solid transparent; background:var(--accent); color:white; text-decoration:none; white-space:nowrap; transition:transform var(--transition), background var(--transition), box-shadow var(--transition); }
+.btn-hh:hover { background:var(--accent-hover); text-decoration:none; }
+.btn-copy:hover, .btn-hh:hover { transform:translateY(-1px); box-shadow:var(--shadow-sm); }
+.btn-copy:active, .btn-hh:active { transform:none; box-shadow:none; }
+.btn-copy:focus-visible, .btn-hh:focus-visible { outline:2px solid var(--border-focus); outline-offset:2px; }
+.bottom-line-card { margin:1rem 0 0; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:var(--radius); padding:0.875rem 1rem; font-size:0.875rem; color:var(--text-secondary); line-height:1.6; }
+.bottom-line-card strong { color:var(--text-primary); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.3rem; }
+.sections-container { padding:0.75rem 0 6rem; }
+.section-details { border:1px solid var(--border); border-radius:12px; margin-bottom:0.75rem; background:linear-gradient(180deg, var(--bg-sidebar), var(--bg-main)); overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.section-details[open] { box-shadow:var(--shadow-sm); border-color:color-mix(in srgb, var(--accent) 25%, var(--border)); }
+.section-summary { display:flex; align-items:center; gap:0.6rem; padding:0.8rem 1rem; cursor:pointer; user-select:none; list-style:none; font-size:0.875rem; font-weight:600; color:var(--text-secondary); background:var(--summary-bg); transition:background var(--transition), color var(--transition); }
+.section-summary:hover { background:var(--summary-hover); color:var(--text-primary); }
+.section-summary::-webkit-details-marker { display:none; }
+.section-icon { font-size:0.72rem; width:22px; height:22px; border-radius:50%; background:var(--bg-main); border:1px solid var(--border); display:inline-flex; align-items:center; justify-content:center; color:var(--text-secondary); }
+.section-chevron { margin-left:auto; font-size:0.65rem; color:var(--text-muted); transition:transform 0.2s ease; }
+.section-details[open] .section-chevron { transform:rotate(90deg); }
+.section-body { padding:1rem 1.1rem; font-size:0.875rem; color:var(--text-secondary); line-height:1.7; white-space:pre-wrap; border-top:1px solid var(--border); }
+.section-body--normal { white-space:normal; }
+.section-body .label-highlight { font-weight:700; color:var(--text-primary); }
+.section-body .label-serious { font-weight:700; color:var(--danger); }
+.depot-type-pill { margin-left:0.5rem; font-size:0.65rem; padding:0.1rem 0.5rem; border-radius:10px; background:var(--tag-bg); color:var(--tag-text); }
+.depot-type-pill.typical { background:var(--summary-bg); color:var(--text-secondary); }
+.depot-type-pill.atypical { background:var(--tag-bg); color:var(--tag-text); }
+.depot-section-label { font-weight:700; color:var(--text-primary); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:0.25rem; }
+.depot-section-item { margin-bottom:0.75rem; }
+.depot-section-text { white-space:pre-wrap; }
+.med-item--depot { display:block; }
+.depot-name { font-weight:600; }
+.sidebar-toggle-row { display:flex; gap:0.5rem; margin-top:0.75rem; }
+.sidebar-toggle-btn { flex:1; min-height:30px; padding:0.3rem 0.45rem; font-size:0.7rem; font-weight:600; border-radius:6px; cursor:pointer; background:var(--bg-main); color:var(--text-muted); border:1px solid var(--border); transition:color var(--transition), background var(--transition), border-color var(--transition); }
+.sidebar-toggle-btn:hover { color:var(--text-primary); background:var(--summary-hover); }
+.btn-fav-star { background:none; border:none; font-size:1.2rem; line-height:1; cursor:pointer; margin-left:0.6rem; vertical-align:text-bottom; color:var(--text-muted); transition:transform var(--transition), color var(--transition); outline:none; padding:0; }
+.btn-fav-star.is-active { color:#eab308; }
+.btn-fav-star:hover { transform:scale(1.1); }
+.btn-fav-star:focus-visible { outline:2px solid var(--border-focus); outline-offset:2px; border-radius:4px; }
+@media (max-width: 768px) {
+  .header-actions { grid-auto-flow:row; grid-template-columns:repeat(2, minmax(96px, 1fr)); width:100%; }
+  .med-sticky-header { border-left:none; border-right:none; border-bottom-left-radius:0; border-bottom-right-radius:0; }
+  .welcome-card { padding:1.4rem 1rem; }
+}
+.fab-top { position:fixed; bottom:2rem; right:1.5rem; width:42px; height:42px; border-radius:50%; background:var(--accent); color:white; border:none; font-size:1.1rem; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(59,130,246,0.4); z-index:300; opacity:0; transform:translateY(10px); transition:opacity 0.2s,transform 0.2s; pointer-events:none; cursor:pointer; }
+.fab-top.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
+.fab-top:hover { background:var(--accent-hover); }
+.toast { position:fixed; bottom:5rem; left:50%; transform:translateX(-50%) translateY(10px); background:var(--text-primary); color:var(--bg-page); padding:0.5rem 1.25rem; border-radius:20px; font-size:0.8rem; font-weight:600; opacity:0; transition:opacity 0.2s,transform 0.2s; pointer-events:none; z-index:400; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.no-results { padding:2rem 0.875rem; text-align:center; color:var(--text-muted); font-size:0.85rem; }
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+<button class="fab-top" id="fabTop" onclick="scrollMainToTop()" title="Back to top">&#8679;</button>
+<div class="toast" id="toast"></div>
+
+<div class="app-shell" id="appShell">
+  <header class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon">Rx</div>
+      <div>Medication Reference<div class="topbar-sub">IMH Clinical Tool</div></div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()">&#9776; Medications</button>
+    <button class="topbar-btn" id="themeBtn" onclick="toggleTheme()"><span class="theme-label" id="themeLabel">Dark</span></button>
+  </header>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-search">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" class="search-input" id="searchInput" placeholder="Search medications..." oninput="filterMeds(this.value)" autocomplete="off" />
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+  </aside>
+
+  <main class="main-content" id="mainContent">
+    <div class="welcome-screen" id="welcomeScreen">
+      <div class="welcome-card">
+        <div class="welcome-icon">Rx</div>
+        <h2>Medication Reference</h2>
+        <p>Select a medication from the sidebar to view detailed clinical information.</p>
+        <div class="shortcut-chips">
+          <span class="shortcut-chip">/ Search</span>
+          <span class="shortcut-chip">E Expand</span>
+          <span class="shortcut-chip">C Collapse</span>
+        </div>
+      </div>
+    </div>
+    <div id="medDisplay" style="display:none;"></div>
+  </main>
+</div>
+
+<script>
+const MED_DATA = [{"id":"fluoxetine","name":"Fluoxetine","category":"SSRIs","bottom_line":"Go-to SSRI due to wide spectrum of indications, long track record and lack of discontinuation syndrome. Favored in patients who require activation (most activating SSRI). Main disadvantage is the high potential for drug interactions.","mechanism":"Selective Serotonin Reuptake inhibitor\nMetabolized through CYP2D6\nPotent inhibitor of CYP2D6\nLong half life","indications":"FDA approval: Major depressive disorder (8+ years), OCD (7+ years), panic disorder, bulimia, PMDD (Sarafem)\nOff label: PTSD, social anxiety disorder","side_effects":"Most common: Nausea/vomiting/diarrhea, headache, drowsiness, dizziness, insomnia, decreased sexual drive, transient anxiety/tremors/sweating, rash\n\nSerious but rare:\n- Unusual bruising or bleeding (A&E if blood in urine, black and sticky stools, coughing up blood)\n- Hyponatremia (A&E if muscle cramps/weakness, confusion, difficulty concentrating, unsteady gait)\n- Mania (A&E if unusual thoughts, talking, feeling and acting with excitement that cannot be controlled)\n- Serotonin syndrome (A&E if high fever, confusion, muscle stiffness/jerking)\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old, within first 1-2 months or during dose adjustment\n\nPregnancy and Breastfeeding: Considered relatively safe in pregnancy, avoid in breastfeeding due to long half-life (sertraline and paroxetine preferred due to short half life)","drug_interactions":"Avoid use with MAOIs (5 week washout if switching to MAOIs) and other serotonergic agents","monitoring":"Sodium in patients at risk for hyponatremia","dosage":"IMH: 10 and 20mg tab (Prozac), increase by 10-20mg/day after several weeks; $0.40/tab\nStarting: 10-20mg/day. Range: 20-60mg/day. Max: 80mg/day.\nStart at 5-10mg in panic disorder to minimize initial increase in anxiety and panic symptoms.\nMany children/adolescents will show good treatment response at only 10mg/day.\nMost respond best to OM dosing due to activating effects.\nGood choice for PMDD for intermittent dosing (luteal dosing, from Day 15-28 of cycle; 14 days before menses); low risk for discontinuation after abrupt stopping prior to menses (regular dosing also possible)","clinical_pearls":"Due to long half life, effect of dose changes will not be fully reflected for several weeks.\nLong half life also causes minimal discontinuation syndrome - can be stopped immediately. Medications with short half life and high risk of discontinuation (paroxetine, fluvoxamine, venlafaxine) can be switched to fluoxetine to prevent discontinuation syndrome.\nMost likely to cause rash of all the SSRIs.\nFluoxetine/Olanzapine combination (OFC) - FDA approved for bipolar depression and treatment resistant depression.\nFirst line agent for children with depression and anxiety disorders.","healthhub_slug":"fluoxetine"},{"id":"fluvoxamine","name":"Fluvoxamine","category":"SSRIs","bottom_line":"SSRI with FDA indication for OCD. However, used less due to sedation, discontinuation and risk of drug interactions although just as effective as other SSRIs.","mechanism":"Selective Serotonin Reuptake inhibitor\nMetabolized through CYP1A2 and 2D6\nPotent inhibitor of CYP1A2 and 2C19","indications":"FDA approval: OCD\nOff label: Major depressive disorder, Generalized Anxiety Disorder, Panic disorder, PTSD","side_effects":"Most common: Nausea/vomiting/diarrhea, headache, drowsiness, dizziness, insomnia, decreased sexual drive, transient anxiety/tremors/sweating\n\nSerious but rare:\n- Unusual bruising or bleeding (A&E if blood in urine, black and sticky stools, coughing up blood)\n- Hyponatremia (A&E if muscle cramps/weakness, confusion, difficulty concentrating, unsteady gait)\n- Mania (A&E if unusual thoughts, talking, feeling and acting with excitement that cannot be controlled)\n- Serotonin syndrome (A&E if high fever, confusion, muscle stiffness/jerking)\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old, within first 1-2 months or during dose adjustment\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Avoid use with MAOIs (2 week washout if switching to MAOIs) and other serotonergic agents\nCaution with substrates of CYP1A2 and 2C19.\nCYP1A2 inhibition can be used to increase clozapine:norclozapine ratio","monitoring":"Sodium in patients at risk for hyponatremia","dosage":"IMH: 50mg tab (Faverin); $0.40/tab\nStarting: 50mg, increase by max 50mg/week. Range: 100-300mg. Max: 300mg.\nStart from 25mg in children < 17 years and increase by 25mg/week.\nUsually given ON.\nConsider to divide into BD doses if total daily dose > 100mg (due to short half life; to maintain steady-state plasma levels)","clinical_pearls":"Higher risk of discontinuation syndrome (along with paroxetine, venlafaxine).\nLow dose fluvoxamine has been used to inhibit CYP1A2 metabolism of clozapine to norclozapine (metabolite associated with adverse effects) to achieve an ideal ratio of clozapine:norclozapine.","healthhub_slug":"fluvoxamine"},{"id":"escitalopram","name":"Escitalopram","category":"SSRIs","bottom_line":"Good first line SSRI - tolerable, minimal drug interactions. But has dose-dependent QTc prolongation risk (less vs Citalopram; but more vs other SSRIs).","mechanism":"Selective Serotonin Reuptake inhibitor\nMetabolized through CYP2C19 and 3A4","indications":"FDA approval: Major Depressive Disorder (12+ years); Generalized Anxiety Disorder (7+ years)\nOff label: OCD, PTSD, social anxiety disorder, panic disorder, PMDD","side_effects":"Most common: Nausea/vomiting/diarrhea, headache, drowsiness, dizziness, insomnia, decreased sexual drive, transient anxiety/tremors/sweating\n\nSerious but rare:\n- Unusual bruising or bleeding (A&E if blood in urine, black and sticky stools, coughing up blood)\n- Hyponatremia (A&E if muscle cramps/weakness, confusion, difficulty concentrating, unsteady gait)\n- Mania (A&E if unusual thoughts, talking, feeling and acting with excitement that cannot be controlled)\n- Serotonin syndrome (A&E if high fever, confusion, muscle stiffness/jerking)\n- Prolonged QTc (A&E if fast or irregular heartbeat or fainting episodes)\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old, within first 1-2 months or during dose adjustment\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Avoid use with MAOIs (2 week washout if switching to MAOIs) and other serotonergic agents","monitoring":"Sodium in patients at risk for hyponatremia","dosage":"IMH: 10mg tablet (Lexapro); $1.08/tab\nStarting: 5-10mg, increase by 5-10mg weekly. Range: 10-20mg. Max: 20mg.\nStart from 5mg if <age 18.\nUsually well tolerated in the morning.","clinical_pearls":"Purified from citalopram; considered the 'purest' SSRI and has few, if any, drug-drug interactions.\nA meta-analysis of 21 newer antidepressants showed that sertraline and escitalopram have best efficacy and tolerability in acute depression (Cipriani A et al, Lancet 2018).","healthhub_slug":"escitalopram"},{"id":"sertraline","name":"Sertraline","category":"SSRIs","bottom_line":"Good first-line SSRI (along with escitalopram) due to range of indications, flexible dosing, low drug interaction potential and relative tolerability.","mechanism":"Selective Serotonin Reuptake inhibitor\nExtensive hepatic metabolism (CYP3A4, 2C19, 2C9, 2D6, 2B6)\nModerate inhibitor of CYP2D6 at high doses (>150mg/day)","indications":"FDA approval: Major depression, OCD (6-17y/o), panic disorder, PTSD, PMDD, Social anxiety disorder\nOff label: Generalized anxiety disorder","side_effects":"Most common: Nausea/vomiting/diarrhea, headache, drowsiness, insomnia, decreased sexual drive, transient anxiety/tremors/sweating\n\nSerious but rare:\n- Unusual bruising or bleeding (A&E if blood in urine, black and sticky stools, coughing up blood)\n- Hyponatremia (A&E if muscle cramps/weakness, confusion, difficulty concentrating, unsteady gait)\n- Mania (A&E if unusual thoughts, talking, feeling and acting with excitement that cannot be controlled)\n- Serotonin syndrome (A&E if high fever, confusion, muscle stiffness/jerking)\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old, within first 1-2 months or during dose adjustment\n\nPregnancy and Breastfeeding: Considered relatively safe in both pregnancy and breastfeeding","drug_interactions":"Avoid use with MAOIs (2 week washout if switching to MAOIs) and other serotonergic agents","monitoring":"Sodium in patients at risk for hyponatremia","dosage":"IMH: 50mg tab (Zoloft); $0.40/tab\nStarting: 25-50mg, 25-50mg/day increments weekly. Range: 25-200mg. Max: 200mg.\nPMDD: Intermittent dosing 50mg OD during luteal phase (days 15-28 of cycle, before menses); max 100mg/day.\nDose in morning (tend to be activating).","clinical_pearls":"A meta-analysis of 21 newer antidepressants showed that sertraline and escitalopram have best efficacy and tolerability in acute depression (Cipriani A et al, Lancet 2018).\nConsidered one of the safest antidepressants to use during breastfeeding due to low levels of exposure to the infant.\nHighest incident of diarrhea among SSRI (Squirtraline); up to 20%.","healthhub_slug":"sertraline"},{"id":"paroxetine","name":"Paroxetine","category":"SSRIs","bottom_line":"Least favored SSRI due to side effect profile (greatest sexual side effects, weight gain, sedation, constipation), drug interactions and risk of discontinuation syndrome. However, wide range of FDA anxiety indications leads some clinicians to favor it for patients with significant anxiety.","mechanism":"Selective Serotonin Reuptake inhibitor\nMetabolism through CYP2D6\nPotent inhibitor of CYP2D6\nShort half life","indications":"FDA approval: Major depressive disorder, OCD, panic disorder, social anxiety disorder, GAD, PTSD, PMDD, vasomotor symptoms associated with menopause\nOff label: Premature ejaculation","side_effects":"Most common: Nausea/vomiting/diarrhea, headache, drowsiness, insomnia, decreased sexual drive, transient anxiety/tremors/sweating\n\nSerious but rare:\n- Unusual bruising or bleeding (A&E if blood in urine, black and sticky stools, coughing up blood)\n- Hyponatremia (A&E if muscle cramps/weakness, confusion, difficulty concentrating, unsteady gait)\n- Mania (A&E if unusual thoughts, talking, feeling and acting with excitement that cannot be controlled)\n- Serotonin syndrome (A&E if high fever, confusion, muscle stiffness/jerking)\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old, within first 1-2 months or during dose adjustment\n\nPregnancy and Breastfeeding: Avoid in pregnancy - Risk of cardiovascular malformation (ASD/VSD), relatively safe during breastfeeding","drug_interactions":"Avoid use with MAOIs (2 week washout if switching to MAOIs) and other serotonergic agents\nCaution in patients with medications that require CYP2D6 to convert into active metabolite (e.g. Tamoxifen, Tramadol)","monitoring":"Sodium in patients at risk for hyponatremia","dosage":"IMH: 20mg (Seroxat); $0.40/tab, 12.5mg CR tab (Seroxat CR); $1.49/tab\nSeroxat: Starting dose 10-20mg; Usual range: 20-60mg. Max dose: 60mg.\nSeroxat CR: Starting: 12.5-25mg, 12.5mg/d increments weekly. Range 25-62.5mg; Max: 75mg.\nUsually dosed at night due to sedation.","clinical_pearls":"Ideal medication for thin patients with insomnia and significant anxiety who are not very sexually active.\nWidest range of FDA indications but not approved for use in children/adolescents.","healthhub_slug":"paroxetine"},{"id":"venlafaxine","name":"Venlafaxine","category":"SNRIs","bottom_line":"Probably more effective than SSRIs for depression but has more side effects like BP elevation and discontinuation symptoms. Cipriani (2018) - One of the more effective antidepressants but has one of the highest dropout rates.","mechanism":"Serotonin and noradrenaline reuptake inhibitor\nMetabolism: CYP2D6 to desvenlafaxine (active metabolite)\nVery short half life - high risk of discontinuation syndrome","indications":"FDA approval: Major depressive disorder, generalized anxiety disorder, social anxiety disorder, panic disorder\nOff label: PTSD, PMDD, vasomotor symptoms of menopause, diabetic peripheral neuropathy","side_effects":"Most common: Nausea/vomiting, Loss of appetite, Insomnia, Increased blood pressure (dose-related), Drowsiness, Dry mouth, Constipation, Dizziness and postural hypotension, Mild initial anxiety, Headache, Increased sweating, Decreased sexual drive\n\nSerious but rare:\n- Unusual bruising or bleeding\n- Hyponatremia\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Less data than other antidepressants, considered safe in breastfeeding","drug_interactions":"Avoid MAOIs and other serotonergic agents.\nCaution with inducers/inhibitors of CYP2D6","monitoring":"Monitor BP routinely","dosage":"IMH: 75mg, 150mg XR tablet/capsule (Effexor) (S2, $0.40/tab)\nStarting: 75mg OD, increase by 75mg/d >4 days later. Range: 75-225mg. Max: 375mg.\nFor panic disorder: start at 37.5mg OD, then increase to 75mg OD after 1 week.\nUsually dose in the morning due to risk of insomnia.","clinical_pearls":"Consider if SSRIs have failed. Depression requiring activation. Depression with pain comorbidity.\nTheoretically works as SSRI in low doses (75mg/day), SNRI in moderate doses (150-225mg/day) and affects all monoamines in high doses (>225mg/day).","healthhub_slug":"venlafaxine"},{"id":"desvenlafaxine","name":"Desvenlafaxine","category":"SNRIs","bottom_line":"Active metabolite of venlafaxine, with some minor advantages (less drug interactions, ease of dosing, longer half-life). However, lacks FDA approval for anxiety disorders.","mechanism":"Serotonin and noradrenaline reuptake inhibitor\nMetabolized by liver conjugation but skips CYP2D6 metabolism","indications":"FDA approval: Major depression\nOff label: Fibromyalgia, vasomotor symptoms of menopause, PMDD, GAD, social anxiety disorder, panic disorder, PTSD","side_effects":"Most common: Nausea/vomiting, Loss of appetite, Insomnia, Increased blood pressure, Drowsiness, Dry mouth, Constipation, Dizziness and postural hypotension, Headache, Increased sweating, Decreased sexual drive\n\nSerious but rare:\n- Unusual bruising or bleeding\n- Hyponatremia\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Less data than other antidepressants, considered safe in breastfeeding","drug_interactions":"Avoid MAOIs and other serotonergic agents.\nNot likely to cause other clinically significant interactions","monitoring":"Monitor BP routinely","dosage":"IMH: 50mg ER tablet (Pristiq) (NS, $2.06/tab)\nStarting: 50mg. Range: 50-200mg. Max: 200mg.\n**50mg is the therapeutic dose for most. Clinical trials showed that 100/200/400mg did NOT show more efficacy than 50mg.","clinical_pearls":"When to use over venlafaxine: Liver dysfunction, CYP2D6 drug interactions, poor response or side effects to venlafaxine, simple dosing.\nPatients may find intact capsules in their stool (\"ghost pills\").","healthhub_slug":"desvenlafaxine"},{"id":"duloxetine","name":"Duloxetine","category":"SNRIs","bottom_line":"Main SNRI alternative to venlafaxine/desvenlafaxine. Niche for depressed patients with comorbid pain syndromes. However, risk of potentially serious (but rare) hepatic side effects.","mechanism":"Serotonin and noradrenaline reuptake inhibitor\nMetabolism: CYP1A2, 2D6\nModerate inhibitor of CYP2D6","indications":"FDA approval: MDD, GAD, diabetic peripheral neuropathic pain, fibromyalgia, chronic MSK pain\nOff label: Other neuropathic or chronic pain disorders, other anxiety disorders, stress urinary incontinence","side_effects":"Most common: Nausea/vomiting, Loss of appetite, Insomnia, Increased blood pressure, Drowsiness, Dry mouth, Constipation, Dizziness, Headache, Increased sweating, Decreased sexual drive\n\nSerious but rare:\n- Caution in BPH: Urinary retention\n- Rare cases of liver failure (A&E if pale stools, dark urine, yellow skin, abdominal pain)\n- Unusual bruising or bleeding\n- Hyponatremia\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Insufficient data to recommend","drug_interactions":"Avoid MAOIs and other serotonergic agents.\nCaution with drugs metabolized by CYP2D6.\nInhibitors of CYP2D6 and CYP1A2 may increase duloxetine levels.","monitoring":"Monitor BP routinely\nLFTs if suspecting liver disease","dosage":"IMH: 30mg, 60mg capsule (Cymbalta) (NS $3.17/tab)\nDepression and GAD - Starting: 30-60mg/d. Range: 30-60mg. Max: 120mg.\nFibromyalgia, chronic pain, diabetic neuropathy - Starting 30mg/d. Max: 60mg/d.","clinical_pearls":"When to use? MDD with chronic pain + no liver issues.\nAvoid if: liver issues, alcohol use history, BPH.\nSmoking induces CYP1A2; reduces duloxetine levels by 30%.","healthhub_slug":"duloxetine"},{"id":"agomelatine","name":"Agomelatine","category":"Atypical Antidepressants","bottom_line":"Unique non-sedating antidepressant that works by resetting circadian rhythms. Very well tolerated with no weight gain, no sexual dysfunction and no discontinuation symptoms. However, use heavily limited by strict LFT monitoring protocol.","mechanism":"Melatonin MT1 and MT2 agonist; resynchronizes circadian rhythm\nSerotonin 5-HT2C antagonist; increases norepinephrine and dopamine release in frontal cortex\nNo affinity for serotonin, norepinephrine and dopamine reuptake\nMetabolized by liver via CYP1A2","indications":"FDA approval: None (never approved by FDA due to hepatotoxicity concerns)\nHSA approval: Major depressive disorder\nOff label: Generalized anxiety disorder, Seasonal affective disorder, Sleep disturbances","side_effects":"Most common: Nausea/vomiting/diarrhea/constipation, Headache, Drowsiness, Dizziness, Anxiety, Paradoxical insomnia, Abnormal dreams\n\nSerious but rare:\n- Liver injury/hepatotoxicity (A&E if pale stools, dark urine, yellow skin, abdominal pain)\n- Mania\n- Increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Avoid, insufficient data","drug_interactions":"Potent CYP1A2 inhibitors (e.g. fluvoxamine, ciprofloxacin) are absolutely contraindicated\nAbsolutely contraindicated in any hepatic dysfunction","monitoring":"LFT monitoring (baseline, 3 weeks, 6 weeks, 12 weeks and 24 weeks)\nStop if AST/ALT >3x ULN or signs of hepatic injury","dosage":"IMH: 25mg tablets (Valdoxan)\nStarting: 25mg ON, can increase to 50mg ON after 2 weeks. Max: 50mg ON.\nMust be taken at bedtime; taking in morning defeats chronobiological mechanism.\nNo discontinuation syndrome; no tapering needed.","clinical_pearls":"No discontinuation syndrome - unique advantage.\nStrict LFT monitoring protocol required.\nContraindicated with potent CYP1A2 inhibitors (especially fluvoxamine).","healthhub_slug":"agomelatine"},{"id":"bupropion","name":"Bupropion","category":"Atypical Antidepressants","bottom_line":"Useful in depression associated with fatigue and poor concentration. Absence of weight gain and sexual side effects. Not effective for anxiety disorders but effective for anxiety that accompanies depression. Caution in seizures and eating disorders.","mechanism":"Norepinephrine Dopamine reuptake inhibitor (NDRI)\nMetabolism: Primarily via CYP2B6. Strong inhibitor of CYP2D6","indications":"FDA approval: Major depressive disorder, Seasonal Affective Disorder, Smoking cessation\nOff label: ADHD, sexual dysfunction, bipolar depression","side_effects":"Most common: Nausea/vomiting/constipation, Headache, Transient anxiety, Insomnia, Loss of appetite and weight, Elevated blood pressure\n\nSerious but rare:\n- Seizures - higher risk in seizure history and eating disorders\n- Mania\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Avoid use with MAOIs\nAvoid use with CYP2D6 substrates (atomoxetine, duloxetine, fluoxetine, tamoxifen)","monitoring":"No routine monitoring needed","dosage":"IMH: bupropion 150mg SR tablet (Zyban); do NOT break/split/crush\nStarting: 150mg OM, can increase to 150mg BD on D4. Range: 150-300mg/d. Max: 300mg/d (max single dose 150mg).\nBD doses should be taken at least 8hr apart.","clinical_pearls":"Contraindication - screen for history of seizures and eating disorders before prescribing.\nMay be useful in cases of depression with ADHD.\nAvoid late dosing to prevent insomnia.","healthhub_slug":"bupropion"},{"id":"mirtazapine","name":"Mirtazapine","category":"Atypical Antidepressants","bottom_line":"Useful in depression associated with insomnia and poor appetite. May cause weight gain and sedation, but negligible/much less sexual dysfunction or GI side effects compared to SSRIs.","mechanism":"Noradrenergic and specific serotonergic antidepressant (NaSSa)\nNoradrenergic alpha-2 receptor antagonism\nSerotonin 5-HT2A/2C antagonism - no sexual dysfunction, helps sedation\nSerotonin 5-HT3 antagonism - no GI side effects\nHistamine H1 antagonism - sedation and weight gain\nMetabolism: CYP1A2, 3A4, 2D6","indications":"FDA approval: Major depressive disorder\nOff label: GAD, PTSD, Panic disorder, Methamphetamine use disorder, Insomnia, Nausea, Appetite stimulant","side_effects":"Most common: Sedation, increased appetite and weight gain, dry mouth, constipation, dizziness, headache\n\nSerious but rare:\n- Agranulocytosis/severe neutropenia (A&E if fever/chill/sore throat/mouth sores)\n- Hyponatremia\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Avoid with MAOIs\nCaution with inducers of CYP1A2 or 3A4 (e.g. carbamazepine)","monitoring":"BMI","dosage":"IMH: Mirtazapine ODT 15 and 30mg tabs (Remeron)\nStarting: 15mg ON, increase by 7.5-15mg every 1-2 weeks. Range: 15-45mg ON. Max: 45mg ON.","clinical_pearls":"Higher doses may be paradoxically less sedating - H1 receptors fully saturated at 15mg. Higher doses increases norepinephrine (alerting).\nCalifornia Rocket Fuel = Mirtazapine + Venlafaxine.\nPhase 3 RCT in JAMA (2026) promising effects in methamphetamine use disorder.","healthhub_slug":"mirtazapine"},{"id":"vortioxetine","name":"Vortioxetine","category":"Atypical Antidepressants","bottom_line":"Newer, multimodal antidepressant with diverse effects on neurotransmitters. May have pro-cognitive effects and less risk of sexual side effects. However, high prevalence of nausea and pricy.","mechanism":"Multimodal antidepressant; Serotonin reuptake inhibitor, agonist at 5-HT1A, partial agonist at 5-HT1B, antagonist at 5-HT3, 5-HT1D and 5-HT7.\nMetabolism: CYP2D6","indications":"FDA approval: Major depressive disorder\nOff-label: Generalized anxiety disorder, other anxiety disorders","side_effects":"Most common: Nausea/Vomiting, Diarrhea/Constipation, Dizziness, Abnormal dreams, Sexual side effects (but lesser than SSRIs)\n\nSerious but rare:\n- Unusual bruising or bleeding\n- Hyponatremia\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"Avoid use with MAOIs and serotonergic medications\nLower dose in presence of potent 2D6 inhibitors (e.g. bupropion)","monitoring":"No routine monitoring","dosage":"IMH: 5 or 10mg tabs (Brintellix)\nStarting: 5-10mg OD > increase to 20mg OD as tolerated. Range: 5-20mg. Max: 20mg.\nLong half life (66 hours); no tapering needed if on 10mg or less.","clinical_pearls":"Data shows improved cognitive functioning with vortioxetine in depression.\nMore GI side effects than SSRIs - suggest to take with meals or at night.","healthhub_slug":"vortioxetine"},{"id":"trazodone","name":"Trazodone","category":"Atypical Antidepressants","bottom_line":"Most commonly used off-label as a hypnotic at low doses (25-50mg up to 150-200mg). Effective at higher doses (>150mg) for depression. Has advantage of fewer sexual side effects and less weight gain.","mechanism":"SARI: Serotonin Antagonist and reuptake inhibitor\nSerotonin 5HT2A and 5HT2C antagonist, Serotonin reuptake inhibitor\nAlpha-1 antagonist (causes postural hypotension and priapism)\nH1 Antagonist (causes sedation)\nMetabolized through CYP3A4","indications":"FDA approval: Major depression\nOff label: Insomnia, Anxiety","side_effects":"Most common: Sedation, Nausea/vomiting, Constipation/Dry mouth, Postural hypotension and dizziness\n\nSerious but rare:\n- Priapism (A&E if painful sustained erection > 4hrs)\n- Mania\n- Serotonin syndrome\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Limited data suggests relative safety","drug_interactions":"Avoid use with MAOIs\nCaution with antihypertensives (additive risk of orthostatic hypotension)","monitoring":"Postural BP during dose titration or in elderly","dosage":"IMH: 50mg tabs\nInsomnia | Starting: 25-50mg ON, increase by 50mg. Range 50-200mg ON. Max: 200mg ON.\nDepression | Starting: 50mg TDS, increase by 50mg/D every 3-4d. Range 300-400/d. Max: 600mg/d (inpatient).","clinical_pearls":"Rarely used as antidepressant due to over-sedation at therapeutic doses; majority of use is for insomnia.\nMay produce a positive urine test for ecstasy (MDMA) and amphetamines.","healthhub_slug":"trazodone"},{"id":"clomipramine","name":"Clomipramine","category":"Tricyclic Antidepressants (TCAs)","bottom_line":"Second-line treatment for OCD; more side effects than SSRIs.","mechanism":"Serotonin and noradrenaline reuptake inhibition (more selective for serotonin)\nHepatic metabolism","indications":"FDA approval: OCD\nOff label: Major depression, Panic disorder, Pain, Cataplexy in Narcolepsy","side_effects":"Most common: Nausea/vomiting/diarrhea, drowsiness, dry mouth, constipation, dizziness, weight gain, decreased sexual drive\n\nSerious but rare:\n- Urinary incontinence or retention\n- Seizures (in doses > 250mg/day)\n- Mania\n- Cardiac side effects - arrhythmias, prolonged QTc, AV block\n- FDA Black Box: increased risk of suicidal thoughts and behaviours in <25 years old\n\nPregnancy and Breastfeeding: Evidence of fetal heart defects and neonatal withdrawal","drug_interactions":"Avoid MAOIs and other serotonergic agents","monitoring":"ECG - in history of cardiac disease\nClomipramine/norclomipramine levels if on higher doses (150mg or more). Optimal levels 220-500ng/mL","dosage":"IMH: 25mg tablets; $0.20\nStarting dose: 25mg/day, increase by 25mg/day every 4-7d. Usual range: 150-250mg. Max dose: 250mg.","clinical_pearls":"Only TCA that is FDA approved for OCD.\nOverdose toxicity with as little as 10 day supply.\nAssociated with discontinuation syndrome, slow taper recommended.","healthhub_slug":"clomipramine"},{"id":"aripiprazole","name":"Aripiprazole","category":"Antipsychotics","bottom_line":"A highly versatile D2 partial agonist. Excellent choice for minimizing weight gain and metabolic side effects in adults, but carries a high, dose-dependent risk of akathisia.","mechanism":"Dopamine D2 partial agonist\nSerotonin 5-HT1A partial agonist, Serotonin 5-HT2A antagonist\nMetabolized by CYP2D6 and CYP3A4","indications":"FDA approval: Schizophrenia, bipolar disorder (mania/mixed episodes, maintenance), major depressive disorder (adjunct), Irritability in autism, Tourette's syndrome\nOff label: Bipolar depression, behavioural disturbances","side_effects":"Most common: Nausea/vomiting/constipation, Insomnia, Drowsiness, Dizziness, Increased appetite and weight gain - less than other antipsychotics, EPSE especially dose dependent akathisia\n\nSerious but rare:\n- Neuroleptic malignant syndrome (A&E if confusion, high fever, severe muscle stiffness)\n- Rare reports of reversible impulse control disorders\n\nPregnancy and Breastfeeding: Considered relatively safe; 3rd trimester exposure carries risk of neonatal EPSE","drug_interactions":"In presence of CYP2D6 or CYP3A4 inhibitors or poor CYP2D6 metabolizers - give 1/2 dose\nIn presence of CYP3A4 inducer - give double dose","monitoring":"Fasting glucose, lipids\nBMI, blood pressure","dosage":"IMH: Abilify 10/15/20mg tabs; $0.93, $1.73, $2.29\nSchizophrenia and bipolar: Starting: 10-15mg, increase by 5mg/day weekly. Range: 10-30mg. Max: 30mg.\nMDD (Adjunct): Starting: 2-5mg. Range: 2-15mg. Max: 15mg.\nIrritability in autism: Starting: 2mg. Range: 5-10mg. Max: 15mg.","clinical_pearls":"Some use low-dose aripiprazole to counteract antipsychotic-induced prolactinemia.\nAkathisia wise (Most > Least): Cariprazine > Aripiprazole > Brexpiprazole.","healthhub_slug":"aripiprazole"},{"id":"amisulpride","name":"Amisulpride","category":"Antipsychotics","bottom_line":"Atypical antipsychotic with dose-dependent effects. Good efficacy for negative symptoms, positive symptoms, as well as favorable metabolic profile. However, high risk of hyperprolactinemia and requires dosage adjustment for renal impairment.","mechanism":"Dopamine D2/D3 antagonist\nPresynaptic antagonism at low dose increases dopamine release (efficacy for negative symptoms); postsynaptic antagonism at high dose blocks dopamine\nMinimal hepatic metabolism. Excreted unchanged by kidneys","indications":"Off label: Schizophrenia (acute and chronic, both positive and negative symptoms)\nVery effective at low doses for schizophrenia with negative symptoms\nAugmentation with clozapine for Treatment Resistant Schizophrenia","side_effects":"Most common: Insomnia and nervousness (activating at lower doses), drowsiness, dizziness and constipation (sedating at higher doses), weight gain, EPSE, high risk of hyperprolactinemia\n\nSerious but rare:\n- QTc prolongation - dose dependent\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Weigh risks versus benefits","drug_interactions":"QTc Prolonging Drugs: Avoid co-administration\nDopamine Agonists: Mutual antagonism with Levodopa and Parkinson's medications","monitoring":"ECG (baseline QTc), Fasting Glucose/Lipids, Renal Panel (CrCl crucial for dosing)\nBMI, blood pressure","dosage":"IMH: Has amisulpride 200mg tablets (Solian)\nNegative symptoms: Start at 50mg OD. Usual range: 50-300mg OD. Max: 300mg OD.\nPositive/mixed symptoms: Start at 200-400mg BD. Max: 1.2g OD.\nRenal dose adjustment: CrCl 30-60: 50% dose; CrCl 10-29: 33% dose; CrCl <10: Contraindicated","clinical_pearls":"Insomnia and nervousness (anxiety) - unique to amisulpride, not seen in sulpiride.","healthhub_slug":"amisulpride"},{"id":"brexpiprazole","name":"Brexpiprazole","category":"Antipsychotics","bottom_line":"A 'gentler' cousin to aripiprazole. Less akathisia versus aripiprazole. Unique FDA-approved niche in Alzheimer's agitation. Not indicated for Bipolar Disorder.","mechanism":"Dopamine D2 partial agonist\nSerotonin 5-HT1A partial agonist; Serotonin 5-HT2A antagonist\nLower intrinsic activity at D2 and higher affinity for serotonin receptors; hence, less akathisia vs aripiprazole.\nMetabolized by CYP2D6 and CYP3A4","indications":"FDA approval: Schizophrenia, Major depressive disorder (adjunct), Agitation associated with dementia due to Alzheimer's Disease\nOff label: Borderline personality disorder","side_effects":"Most common: Nausea/vomiting/constipation/diarrhea, Dry mouth, Insomnia, Drowsiness, Dizziness, Headache, Increased appetite and weight gain - less than other antipsychotics, EPSE especially dose dependent akathisia\n\nSerious but rare:\n- Neuroleptic malignant syndrome\n- Rare reports of reversible impulse control disorders\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"In presence of strong CYP3A4 inducer > double dose\nIn presence of strong CYP2D6 or CYP3A4 inhibitor > 1/2 dose if 1 class, 1/4 dose if 2 classes","monitoring":"Fasting glucose, lipids\nBMI, blood pressure","dosage":"IMH: Rexulti 0.5/1/2/3/4 mg tabs; 0.5 and 1mg $4.57, 2/3/4mg $6.60\nSchizophrenia: Starting: 1mg OD (Days 1-4), 2mg OD (Days 5-7), then up to 4mg OD (Day 8). Max: 4mg.\nMDD (adjunctive): Starting: 0.5-1mg OD. Usual: 1-2mg. Max: 3mg.\nAlzheimer's agitation: Starting: 0.5mg OD x 7d, 1mg OD x 7d, 2mg OD; Max: 3mg.","clinical_pearls":"Unlike aripiprazole, may not be effective in bipolar mania.\nLong half-life - takes 10-12 days to reach steady state.","healthhub_slug":"brexpiprazole"},{"id":"cariprazine","name":"Cariprazine","category":"Antipsychotics","bottom_line":"Partial dopamine agonist. Preliminary data for negative symptoms due to unique D3 agonism. Indicated for bipolar (manic/mixed episodes) and bipolar I depression. Also an adjunct for MDD (2nd line). QTc neutral.","mechanism":"Dopamine D2 and D3 partial agonist\nSerotonin 5-HT1A receptor partial agonist and serotonin 5-HT2A receptor antagonist\nMetabolized primarily by CYP3A4","indications":"FDA approval: Schizophrenia, Bipolar disorder (manic or mixed episodes), Bipolar I depression, Major depressive disorder (2nd line adjunct)\nOff label: Negative symptoms of schizophrenia","side_effects":"Most common: Nausea/vomiting/constipation, Insomnia, Drowsiness, Dizziness, Increased appetite and weight gain - less than other antipsychotics, EPSE especially dose dependent akathisia\n\nSerious but rare:\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"Caution with CYP3A4 inhibitors; 50% dose reduction may be necessary\nAvoid with CYP3A4 inducers","monitoring":"Fasting glucose, lipids\nBMI, blood pressure","dosage":"IMH: Symvenu 1.5/3/4.5/6mg tabs; $6.14\nSchizophrenia/Mania: Starting: 1.5mg OD. Usual: 1.5-6mg OD. Max: 6mg.\nBipolar depression, MDD (adjunct): Starting: 1.5mg OD. Usual: 1.5-3mg OD. Max: 3mg.\nTitrate slowly in 1.5mg increments due to long half-life.","clinical_pearls":"Very long half-life - good choice in patients with partial or irregular medication adherence.\nMore akathisia compared to abilify and brexpiprazole.","healthhub_slug":"cariprazine"},{"id":"clozapine","name":"Clozapine","category":"Antipsychotics","bottom_line":"Only drug with convincing evidence of superior efficacy over other antipsychotics for treatment-resistant schizophrenia. Consider after 2 failed trials of other antipsychotics. Side effects can be a real challenge.","mechanism":"Dopamine D2 antagonist\nSerotonin 5-HT2A antagonist\nMetabolized by CYP1A2, CYP2D6, CYP3A4","indications":"FDA approval: Treatment-resistant schizophrenia, reduction in risk of suicide in schizophrenia and schizoaffective disorder\nOff label: Treatment-resistant bipolar disorder; treatment-resistant aggression","side_effects":"Most common: Nausea/vomiting, Constipation, Sedation, Postural hypotension, hypersalivation, Weight gain/metabolic syndrome, Tachycardia\n\nSerious but rare:\n- Potentially life-threatening neutropenia (agranulocytosis): 1-2% risk\n- Seizures - dose dependent\n- Myocarditis/cardiomyopathy\n- Severe constipation\n\nPregnancy and Breastfeeding: Limited data suggests relative safety in pregnancy, avoid in breastfeeding","drug_interactions":"Avoid drugs that cause bone marrow suppression (carbamazepine)\nCollapse/respiratory/cardiac arrest reported with benzodiazepines during initiation\nSmoking increases clozapine clearance by 30-50%\nFluvoxamine can increase clozapine levels by 5 to 10x","monitoring":"FBC (ANC) weekly for first 18 weeks, then 2 weekly for first year, then monthly\nSerum levels: Therapeutic 0.35-0.45. Toxicity >0.75.\nTarget ratio of clozapine:norclozapine 1.5-2:1","dosage":"IMH: 25/100mg tab; $0.40\nStarting: 12.5mg ON or BD (D1), 25-50mg/d (D2), increase 25-50mg/d. Usual: 200-450mg by 2nd week. Max: 900mg (usually 2/3 divided doses).\nIf dose interrupted >48 hours, re-titration necessary.","clinical_pearls":"Only antipsychotic with specific FDA approval for anti-suicide properties.\nKey side effects: Weight gain, Constipation (60%), Sialorrhea (30-90%), Sedation (40%), Tachycardia (25%), Nocturnal enuresis (21%), Seizures (1-5%), Agranulocytosis (<1%), Myocarditis (<1%).","healthhub_slug":"clozapine"},{"id":"haloperidol","name":"Haloperidol","category":"Antipsychotics","bottom_line":"High potency, effective, inexpensive FGA with low weight gain potential. However, use is limited by risk of EPSE, hyperprolactinemia and moderate risk of prolonged QTC.","mechanism":"Dopamine D2 receptor antagonist\nMetabolized by CYP2D6 and CYP3A4","indications":"FDA approval: Psychosis, Tourette's disorder, Severe behavioural disorders\nOff label: Bipolar disorder, behavioural disturbances, delirium","side_effects":"Most common: Constipation, dry mouth, drowsiness, EPSE - higher risk, Hyperprolactinemia - higher risk\n\nSerious but rare:\n- QTc prolongation (moderate risk)\n- Neuroleptic malignant syndrome\n- FDA Black Box: Increased risk of mortality in elderly with dementia-related psychosis\n\nPregnancy and Breastfeeding: Limited data suggests relative safety","drug_interactions":"CYP2D6 inhibitors (e.g. fluoxetine, paroxetine, quinidine) may increase haloperidol levels","monitoring":"Baseline ECG\nAbnormal Involuntary Movement Scale (AIMS) every 6 months","dosage":"IMH: 1.5/5mg tab; $0.20-$0.29; oral solution, IM also available\nSchizophrenia - Normal symptoms: Starting: 0.5-2mg BD or TDS. Range: 5-20mg. Max: 20mg.\nSchizophrenia - Severe symptoms: Starting: 3-5mg BD or TDS.\nDelirium/Elderly: Starting: 0.5mg OD/BD. Range: 2-3mg/24hrs. Max: 5mg/24hrs.\nIM haloperidol: Usual: 2.5-5mg/dose. Max: 20mg/day.","clinical_pearls":"High potency FGA - more EPSE but less sedation and anticholinergic side effects vs mid/low potency FGAs.\nAvoid in patients with Parkinson's disease or Dementia with Lewy Bodies.","healthhub_slug":"haloperidol"},{"id":"lurasidone","name":"Lurasidone","category":"Antipsychotics","bottom_line":"Main advantages - no need for titration, once daily dosing, weight neutral and lowest risk of QTc prolongation. One of 5 antipsychotics approved for bipolar depression. Use limited due to food requirement, drug interactions and side effects.","mechanism":"Dopamine D2 antagonist\nSerotonin 5-HT2A and 5-HT7 antagonist, Serotonin 5-HT1A partial agonist\nMetabolized through CYP3A4","indications":"FDA approval: Schizophrenia, bipolar I depression\nOff label: Mixed depression, treatment resistant depression, impulse control disorders","side_effects":"Most common: Nausea/vomiting, Insomnia, Drowsiness, Dizziness, Dry mouth, EPSE especially akathisia\n\nSerious but rare:\n- Neuroleptic malignant syndrome\n- Hyperprolactinemia\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"Avoid with potent CYP3A4 inhibitors or CYP3A4 inducers\nCaution with moderate CYP3A4 inhibitors - decrease lurasidone dose by 50%","monitoring":"Fasting glucose, lipids\nBMI, blood pressure","dosage":"IMH: Latuda 40/80mg tab; $6.07-$7.40\nSchizophrenia: Starting 40mg/d. Range: 40-160mg/d. Max: 160mg/d.\nBipolar depression: Starting 20mg/d. Range: 20-120mg/d. Max: 120mg/d.\nMust take with food (at least 350 calories); no titration needed.","clinical_pearls":"Widely considered to have lowest QTc risk of all antipsychotics.\nWeight neutral in company sponsored trials.\nAdministration with food increases bioavailability 2x and peak serum levels 3x.","healthhub_slug":"lurasidone"},{"id":"olanzapine","name":"Olanzapine","category":"Antipsychotics","bottom_line":"Considered more effective than other antipsychotics, just below clozapine. High efficacy + once daily dosing. Lower risk of QTC and EPSE. However, high risk of weight gain and metabolic complications.","mechanism":"Main: Dopamine D2 antagonist, Serotonin 5-HT2A antagonist\nH1 antagonism (sedation), M1 antagonism (anticholinergic SE), A1 antagonism (orthostatic hypotension)\nMetabolism: CYP1A2 (major) and CYP2D6 (minor)","indications":"FDA approval: Schizophrenia, Bipolar disorder, Treatment resistant depression (with fluoxetine; OFC), Acute agitation (IM)\nOff label: Behavioural disturbances, impulse control disorders","side_effects":"Most common: Sedation and dry mouth, dizziness, constipation, increased appetite, weight gain (up to 40%), EPSE - lower risk, Hyperprolactinemia\n\nSerious but rare:\n- DRESS\n- QTc prolongation - lower risk\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"CYP1A2 interactions: smoking/carbamazepine reduce olanzapine levels by >50%\nFluvoxamine increases olanzapine levels by 50-100%","monitoring":"Fasting glucose and lipids\nBMI, blood pressure","dosage":"IMH: Olanzapine tablet 5 or 10mg, Olanzapine ODT 5 or 10mg, IM olanzapine\nSchizophrenia/bipolar/depression: Start at 5mg-10mg/d. Usual: 5-20mg/d. Max: 20mg/d.\nIM Olanzapine: 2.5-10mg/dose. Max 30mg/24H. Avoid IM benzodiazepines (risk of respiratory depression).","clinical_pearls":"Depot olanzapine pamoate requires strict monitoring 3hr post injection due to risk of PDSS (Post-injection Delirium/Sedation Syndrome).","healthhub_slug":"olanzapine"},{"id":"paliperidone","name":"Paliperidone","category":"Antipsychotics","bottom_line":"Active metabolite of risperidone. Advantages: no drug-drug interactions, unique FDA approval for schizoaffective disorder and easy transition to depot. Along with risperidone, most EPSE and hyperprolactinemia of all the atypicals.","mechanism":"Dopamine D2 antagonist, Serotonin 5-HT2A antagonist\nNot metabolised by the liver; Excreted by kidneys - dose adjustment needed in renal dysfunction","indications":"FDA approval: Schizophrenia, Schizoaffective disorder\nOff label: Bipolar disorder (CANMAT: 1st line for bipolar mania), behavioural disturbances","side_effects":"Most common: Drowsiness, headache, nausea/vomiting, constipation, weight gain, EPSE - higher risk, Hyperprolactinemia - higher risk\n\nSerious but rare:\n- QTc prolongation\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"Avoid with drugs that prolong QTc or postural hypotension\nAvoid use with risperidone (paliperidone is its active metabolite)\nMinimal drug interactions otherwise","monitoring":"Fasting glucose and lipids, Prolactin if symptoms\nBMI, blood pressure","dosage":"IMH: 3mg, 6mg, 9mg tablets (Invega)\nStart 6mg/day, increase by 3mg/>5 days. Usual range: 3-12mg/day. Max: 12mg/day.","clinical_pearls":"Along with risperidone, causes the most EPSE and hyperprolactinemia of all the atypicals.\nPatients may find intact capsules in their stool (\"ghost pills\"). Invega uses OROS osmotic delivery system.","healthhub_slug":"paliperidone"},{"id":"quetiapine","name":"Quetiapine","category":"Antipsychotics","bottom_line":"Broad spectrum efficacy and low risk for EPSE makes it appealing as a first line agent. However, sedation, weight gain and postural hypotension may limit use.","mechanism":"Dopamine D2 antagonist and serotonin 5HT2A antagonist\nHistamine H1 antagonism (sedation), Alpha-1 antagonism (postural hypotension)\nActive metabolite Norquetiapine responsible for antidepressant activity via NET inhibition\nMetabolized by CYP3A4","indications":"FDA approval: Schizophrenia, Bipolar (mania, depression, maintenance)\nOff label: Insomnia, anxiety disorders, behavioural disturbances","side_effects":"Most common: Sedation, dry mouth, nausea/vomiting/constipation, postural hypotension, weight gain, EPSE - lower risk\n\nSerious but rare:\n- QTc prolongation\n- Neuroleptic malignant syndrome\n- Hypothyroidism\n- FDA Black Box: Increased risk of mortality in elderly with dementia-related psychosis\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Adjust in presence of potent CYP3A4 inducers or inhibitors","monitoring":"Fasting glucose and lipids\nBMI, blood pressure","dosage":"IMH: Quetiapine 25/100/200mg tab; $0.40. Quetiapine XR 50mg/200mg tab; $2.27-$2.67\nQuetiapine IR: Start: 50mg, increase by max 50-100mg/day.\nQuetiapine XR: Once daily 4-5 hours before bedtime. Start: 50mg.\nUsual: Bipolar depression 300mg (Max 600mg), Mania 200-800mg, Schizophrenia 400-800mg.","clinical_pearls":"At low dose: antihistaminergic (Sedation). At medium dose: serotonergic + NET inhibition (Antidepressant). At high dose: dopaminergic (Antipsychotic).\nOnly XR version is FDA approved for MDD augmentation.","healthhub_slug":"quetiapine"},{"id":"risperidone","name":"Risperidone","category":"Antipsychotics","bottom_line":"Considered by many to be first choice for psychosis in view of moderate side effect profile. Doses more than 4mg may lead to akathisia and side effects. Hyperprolactinemia is fairly common.","mechanism":"Dopamine D2 antagonist and serotonin 5HT2A antagonist\nPrimarily metabolized by CYP2D6","indications":"FDA approval: Schizophrenia, Bipolar disorder (mania), Irritability symptoms in autism (>5 y/o)\nOff label: Bipolar depression, behavioural disturbances, Tourette's syndrome","side_effects":"Most common: Sedation, dry mouth, nausea/vomiting/constipation, rhinitis, postural hypotension, weight gain, EPSE - higher risk, Hyperprolactinemia - higher risk\n\nSerious but rare:\n- QTc prolongation\n- Neuroleptic malignant syndrome\n- FDA Black Box: Increased risk of mortality in elderly with dementia-related psychosis\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"CYP2D6 inhibitors increase plasma concentration (Fluoxetine, paroxetine, quinidine)\nCYP2D6 inducers reduce plasma concentration (Carbamazepine - need to double risperidone dose)","monitoring":"Fasting glucose and lipids\nProlactin if symptoms\nBMI, blood pressure","dosage":"IMH: Risperidone 1/2mg tab; $0.40, oral solution\nStarting dose: 2mg/day. Usual range: 2-6mg. Max dose: 6mg.\nSchizophrenia/Bipolar: Start 1mg BD, increase by 1-2mg/day to 4-6mg.","clinical_pearls":"Along with paliperidone, causes most EPSE and hyperprolactinemia of all atypicals.","healthhub_slug":"risperidone"},{"id":"sulpiride","name":"Sulpiride","category":"Antipsychotics","bottom_line":"Atypical antipsychotic. An older structural sibling to amisulpride with similar dose-dependent profile. Excellent for negative symptoms or somatic/vestibular complaints (often utilized for vertigo).","mechanism":"Dopamine D2/D3 antagonist\nPresynaptic antagonism at low dose increases dopamine release; similar to amisulpride\nMinimal hepatic metabolism. Excreted unchanged by the kidneys","indications":"Off label: Schizophrenia (acute and chronic, both positive and negative symptoms)","side_effects":"Most common: Sedation, dry mouth, constipation, postural hypotension, weight gain, EPSE, Hyperprolactinemia - higher risk\n\nSerious but rare:\n- QTc prolongation\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Weigh risks versus benefits","drug_interactions":"QTc Prolonging Drugs: Avoid co-administration\nDopamine Agonists: Mutual antagonism with Levodopa","monitoring":"ECG (baseline QTc), Fasting Glucose/Lipids, Renal Panel\nBMI, blood pressure","dosage":"IMH: Has Sulpiride 200mg tablets (Dogmatil)\nSchizophrenia: Start at 200-400mg BD. Usual range: 200-400mg BD.\nPositive symptoms: Up to 2.4g. Negative symptoms: Up to 800mg.\nRenal dose adjustment: CrCl 30-60: 70%; CrCl 10-29: 50%; CrCl <10: 35%","clinical_pearls":"Structural sibling to amisulpride. Used for vertigo/vestibular complaints.","healthhub_slug":"sulpiride"},{"id":"trifluoperazine","name":"Trifluoperazine","category":"Antipsychotics","bottom_line":"An effective older agent with similar potency to haloperidol; rarely used these days.","mechanism":"Dopamine D2 receptor antagonist (high D2 affinity)\nMetabolized by CYP1A2","indications":"FDA approval: Schizophrenia, Non-psychotic anxiety\nOff label: Bipolar disorder, behavioural disturbances","side_effects":"Most common: Drowsiness, dry mouth, constipation, dizziness, EPSE - higher risk, Hyperprolactinemia - higher risk\n\nSerious but rare:\n- QTc prolongation\n- Neuroleptic malignant syndrome\n\nPregnancy and Breastfeeding: Insufficient data","drug_interactions":"Smoking is a potent inducer of CYP1A2 > reduces trifluoperazine levels","monitoring":"Baseline ECG\nFasting glucose/lipids, BMI and blood pressure\nAIMS every 6 months","dosage":"IMH: 1mg and 5mg tabs; $0.20, $0.21 (Stelazine)\nStarting dose: 2-5mg BD, increase by 2-5mg/d every week. Usual range: 15-20mg. Max dose: 40mg.","clinical_pearls":"High potency FGA - high risk of EPSE and hyperprolactinemia but lower risk of histaminergic, alpha-1-adrenergic, and muscarinic side effects vs low potency FGA.","healthhub_slug":"trifluoperazine"},{"id":"lithium","name":"Lithium","category":"Mood Stabilizers","bottom_line":"Gold standard for bipolar disorder. More useful in euphoric mania than psychotic mania but main advantage is efficacy for bipolar depression and maintenance. Has anti-suicide effects.","mechanism":"Exact mechanism unknown; postulated neuromodulating effects","indications":"FDA approval: Acute mania, Bipolar disorder (maintenance)\nOff label: Bipolar depression, Treatment resistant depression","side_effects":"Most common: Sedation, Nausea/vomiting/diarrhea, Weight gain, Headache, Fine tremor, Hypothyroidism, Nephrogenic diabetes insipidus\n\nSerious but rare:\n- Renal dysfunction\n- Cardiac arrhythmias\n- Lithium toxicity (A&E if GI upset, coarse tremors, ataxia, slurred speech)\n- Serotonin syndrome\n\nPregnancy and Breastfeeding: Avoid if possible, especially in first trimester (risk of Ebstein's Anomaly). Avoid in breastfeeding.","drug_interactions":"Drugs may increase lithium levels: NSAIDs, Ace-inhibitors and Hydrochlorothiazide (No ACE in the Hole)\nAspirin is safest NSAID\nExcessive sweating and low sodium diet can increase levels","monitoring":"Baseline: FBC, RP + Ca, TFT + ECG\nTargets: Acute mania 0.8-1.0mmol/L; Maintenance 0.6-0.8; Toxicity > 1.2\nCheck trough (12 hrs after last dose)","dosage":"IMH: Only has lithium Carbonate CR 400mg Tab\nStart 400mg ON, increase by 400mg/ON every 5-7d; Range 0.8-1.2g. Max: 1.8g/day.\nUsually once daily dose for renal protection.","clinical_pearls":"Lithium induced hypothyroidism is typically managed by adding levothyroxine, rather than abandoning lithium.","healthhub_slug":"lithium"},{"id":"valproate","name":"Valproate Acid","category":"Mood Stabilizers","bottom_line":"Good choice and considered superior to lithium for rapid cycling and mixed states. Not as effective as lithium for bipolar maintenance. Educate and exercise caution in women of childbearing age.","mechanism":"Neuromodulator; increases GABA and reduces neuronal excitability\nMetabolism: Hepatic with minimal role of CYP450 enzymes","indications":"FDA approval: Bipolar (Acute mania), Seizure, Migraine prophylaxis\nOff label: Bipolar maintenance, violence and aggression, impulse control disorders","side_effects":"Most common: Dizziness, Sedation, Nausea/vomiting/diarrhea, Hair loss, Weight gain, Fine tremor, Thrombocytopenia, PCOS (10% of women)\n\nSerious but rare:\n- SJS or TEN\n- Hepatic dysfunction, pancreatitis\n- Hyperammonemia, encephalopathy\n\nPregnancy and Breastfeeding: Avoid in pregnancy (teratogenicity, neural tube defects); safe in breastfeeding.","drug_interactions":"Lamotrigine - doubles levels of lamotrigine\nAspirin - increases risk of VPA toxicity\nWarfarin - increases risk of bleeding","monitoring":"Baseline: FBC, RP, LFT\nTDM targets: 50-125 mg/L; toxic > 125","dosage":"IMH has Valproate EC 200mg tabs; Valproate Chrono 200, 300, 500mg tabs\nAcute mania: Start: 250-500mg ON; Range: 1-2g OD (20-30mg/kg); Max: 2.5g OD\nEC given BD, Chrono given ON","clinical_pearls":"Good choice for rapid cycling and mixed states (superior to lithium).\nEducate patients on teratogenicity and PCOS risk.","healthhub_slug":"sodium-valproate"},{"id":"carbamazepine","name":"Carbamazepine","category":"Mood Stabilizers","bottom_line":"FDA approved for bipolar disorder but NOT first line due to side effects/interactions.","mechanism":"Sodium channel blocker\nMetabolism: CYP3A4; induces own metabolism","indications":"FDA approval: Bipolar disorder (acute mania), Seizures, Trigeminal neuralgia\nOff label: Bipolar maintenance, violence and aggression","side_effects":"Most common: Dizziness, Sedation, Constipation/Diarrhea, Nausea/Vomiting, Headache\n\nSerious but rare:\n- SJS or TEN - HLA-B*1502 allele (Asian descent) significantly increases risk\n- Blood dyscrasias\n- Hepatic dysfunction/failure\n\nPregnancy and Breastfeeding: Avoid in pregnancy (neural tube defects); relatively safe in breastfeeding","drug_interactions":"Potent inducer of CYP1A2, 2B6, 2C19, 2C8, 2C9, 3A4; reducing drug levels\nQuetiapine (-80%), Clozapine (50%), Lamotrigine (50%)\nOral contraceptives - can cause pregnancy\nClozapine - relatively contraindicated; additive risk of agranulocytosis","monitoring":"Baseline: FBC, RP, LFT + HLA-B*1502 + ECG\nTDM targets: 4-12mg/L | Toxicity > 12mg/L","dosage":"IMH has 200mg tabs, IR (tegretol) and ER (tegretol CR)\nAcute mania: Start 200mg BD > increase 200mg every 3-4 days. Max: 800mg BD (1.6g/day).","clinical_pearls":"Potent CYP inducer - check ALL co-medications before starting.\nHLA-B*1502 testing mandatory in patients of Asian descent.\nAutoinduction means levels will drop 2-4 weeks after starting.","healthhub_slug":"carbamazepine"},{"id":"lamotrigine","name":"Lamotrigine","category":"Mood Stabilizers","bottom_line":"Good choice for maintenance treatment of bipolar disorder, especially prophylaxis of depressive episodes BUT ineffective in manic episodes. Good side effect profile but slow titration needed.","mechanism":"Sodium channel blocker\nMetabolism: Primarily hepatic (non-CYP450)","indications":"FDA approval: Bipolar disorder (maintenance)\nOff label: Bipolar depression, Major depression (3rd line adjunct)","side_effects":"Most common: Dizziness, Sedation, Nausea/vomiting, Headache, Loss of appetite, Benign rash (10%)\n\nSerious but rare:\n- SJS or TEN\n- Blood dyscrasias\n\nPregnancy and Breastfeeding: Considered relatively safe","drug_interactions":"Valproate acid - doubles lamotrigine levels (and increases SJS risk)\nCarbamazepine, Hormonal Contraceptives - decrease lamotrigine levels","monitoring":"Baseline bloods: FBC RP LFT + ECG\nNo therapeutic drug monitoring needed","dosage":"IMH: Lamictal 50 and 100mg tabs\nMonotherapy: Start 25mg OD x 2/52 > 50mg OD x 2/52, increase 50-100mg/1-2w; Range: 200mg/day. Max: 400mg/d.\nIf with VPA: Start 25mg EOD; usual 100mg/day, max 200mg/day.\nIf with CMZ: Start 50mg OD; usual 400mg/day.","clinical_pearls":"In IMH depression guidelines, lamotrigine is a 3rd line adjunctive agent.\nHLA-B1502 allele is a risk factor for SJS/TEN.","healthhub_slug":"lamotrigine"},{"id":"gabapentin","name":"Gabapentin","category":"Mood Stabilizers","bottom_line":"Considered a non-addictive medication for anxiety and alcohol dependence, but may be diverted and misused for euphoric effect.","mechanism":"Blocks voltage dependent calcium channels and modulates excitatory neurotransmitter release\nNot metabolized; excreted unchanged by kidneys","indications":"FDA approval: Partial seizures, Post-herpetic neuralgia, Restless legs syndrome\nOff label: Anxiety disorders, Withdrawal from alcohol/benzodiazepines, Alcohol dependence","side_effects":"Most common: Sedation/Fatigue, Nausea, Dizziness, Weight gain, Peripheral edema\n\nSerious but rare:\n- DRESS\n- Respiratory depression (esp with opioids)\n\nPregnancy and Breastfeeding: Potential risk for heart defects or neonatal withdrawal","drug_interactions":"Few significant interactions but additive sedation with other sedating drugs","monitoring":"No routine monitoring","dosage":"IMH: 100/300mg capsules\nStarting: 100-300mg ON, increase by 100mg/d. Range: 300mg TDS. Max: 3600mg/day.","clinical_pearls":"Potential for misuse due to euphoric effects.\nAdjustment needed based on renal function.","healthhub_slug":"gabapentin"},{"id":"pregabalin","name":"Pregabalin","category":"Mood Stabilizers","bottom_line":"Structurally related to gabapentin, likely more effective for psychiatric disorders especially GAD and social anxiety.","mechanism":"Binds to alpha-2 delta subunit of voltage-gated calcium channels\nNegligible metabolism; excreted mostly unchanged by kidneys","indications":"FDA approval: Diabetic peripheral neuropathy, post-herpetic neuralgia, partial seizures, fibromyalgia\nOff label: Generalized anxiety disorder","side_effects":"Most common: Sedation, dizziness, weight gain, nausea, vomiting, constipation, dry mouth, peripheral edema\n\nSerious but rare:\n- SJS or TEN\n- Respiratory depression\n\nPregnancy and Breastfeeding: FDA recommends against breastfeeding","drug_interactions":"No significant drug interactions but additive sedation","monitoring":"No routine monitoring","dosage":"IMH: Lyrica 25/75/150mg Capsules; $0.40\nStarting: 75mg BD, increase by 75-150mg/d every week. Range: 150-600mg. Max: 600mg ON/300mg BD.","clinical_pearls":"Use case: Augmentation on top of SSRI/SNRI for anxiety; Alternative to benzodiazepines.","healthhub_slug":"pregabalin"},{"id":"atomoxetine","name":"Atomoxetine","category":"ADHD Medications","bottom_line":"Non-stimulant ADHD medication without potential for abuse, causes less insomnia and anxiety. However, less effective than stimulants and takes longer to work.","mechanism":"Selective norepinephrine reuptake inhibitor (NRI)\nMetabolized via CYP2D6","indications":"FDA approval: ADHD (adults and children >=6 years)\nOff label: Treatment resistant depression","side_effects":"Most common: Headache, decreased appetite and weight loss, insomnia, stomach discomfort, dry mouth, constipation\n\nSerious but rare:\n- Hepatic injury\n- Increased blood pressure and heart rate\n- FDA black box: Increased risk of suicidal ideations in children and young adults\n\nPregnancy and Breastfeeding: Limited but reassuring data","drug_interactions":"Avoid use with MAOIs.\nCaution with CYP2D6 inhibitors (e.g. fluoxetine, paroxetine)","monitoring":"Baseline LFTs\nBaseline and regular monitoring of BP and HR","dosage":"IMH: Strattera 10/40/60mg; $1.90, $2.00, $2.86\n<70kg: Start 0.5mg/kg/day. Range: 0.5-1.2mg/kg. Max: 1.4mg/kg up to 100mg.\n>70kg: Start 40mg OM, increase to 80mg OD after 3 days, then 100mg OD after 2-4 weeks.","clinical_pearls":"Appears to be more effective in improving attention than controlling hyperactivity.","healthhub_slug":"atomoxetine"},{"id":"guanfacine","name":"Guanfacine","category":"ADHD Medications","bottom_line":"Alpha-2 agonist without abuse potential, does not worsen tics, does not cause insomnia. Guanfacine ER now available as generic.","mechanism":"Alpha-2 agonist (centrally acting, selective)\nMetabolized by CYP3A4","indications":"FDA approval: ADHD (age 6-17), monotherapy or adjunctive to stimulants\nOff label: Conduct disorder, Tourette's and motor tics, Opioid withdrawal","side_effects":"Most common: Constipation, dry mouth, somnolence, dizziness, fatigue, headache\n\nSerious but rare: Postural hypotension and syncope\n\nPregnancy and Breastfeeding: Not well studied","drug_interactions":"Caution with CYP3A4 inhibitors (e.g. fluvoxamine) and inducers (e.g. carbamazepine)","monitoring":"Blood pressure and heart rate - especially during initial dose titration","dosage":"IMH: 1/2mg ER; $0.97, $1.12\nStarting: 1mg OD, increase by 1mg/day at weekly intervals. Range: 1-4mg. Max: 4mg/day (age 6-12), 7mg/day (age 13-17).","clinical_pearls":"Risk of anxiety and rebound hypertension after abrupt discontinuation. Taper no more than 1mg/d every 3-7d.","healthhub_slug":"guanfacine"},{"id":"methylphenidate_ir","name":"Methylphenidate IR (Ritalin)","category":"ADHD Medications","bottom_line":"Better side effect profile and lower abuse potential versus amphetamines.","mechanism":"Stimulant that inhibits reuptake of dopamine and noradrenaline\nHepatic metabolism via carboxylesterase CES1A1; half life 2-4 hours","indications":"FDA approval: ADHD (adults and children >=6 years), Narcolepsy\nOff label: Apathetic depression in the elderly or medically ill","side_effects":"Most common: Stomach discomfort/nausea, Headache, Loss of appetite and weight, Insomnia, Anxiety, Dry mouth\n\nSerious but rare:\n- Increase in blood pressure and heart rate\n- Tics\n- Worsening agitation\n- New or worsening psychosis\n\nPregnancy and Breastfeeding: Limited data","drug_interactions":"Avoid use with MAOIs","monitoring":"ECG (if history of cardiac disease)\nBMI, BP and HR","dosage":"IMH: Ritalin 10mg tablet; $0.29\nStarting: 5mg OM/BD, increase by 10mg/d at weekly intervals. Range: 5-30mg OD. Max: 60mg OD.","clinical_pearls":"Cochrane review showed methylphenidate did not worsen tics in children with ADHD and a tic disorder.","healthhub_slug":"methylphenidate"},{"id":"methylphenidate_er","name":"Methylphenidate ER (Medikinet/Ritalin LA/Concerta)","category":"ADHD Medications","bottom_line":"Choose based on duration of action required - 8H (Medikinet, Ritalin LA), 12H (Concerta). Medikinet and Ritalin LA can be opened and sprinkled on food.","mechanism":"Stimulant that inhibits reuptake of dopamine and noradrenaline\nHepatic metabolism via carboxylesterase CES1A1","indications":"FDA approval: ADHD (adults and children >=6 years), Narcolepsy\nOff label: Apathetic depression","side_effects":"Most common: Stomach discomfort/nausea, Headache, Loss of appetite and weight, Insomnia, Anxiety, Dry mouth\n\nSerious but rare:\n- Increase in blood pressure and heart rate\n- Tics\n- Worsening agitation\n- New or worsening psychosis\n\nPregnancy and Breastfeeding: Limited data","drug_interactions":"Avoid use with MAOIs","monitoring":"ECG (if history of cardiac disease)\nBMI, BP and HR","dosage":"IMH:\nMedikinet: 5/10/20/30mg; $0.97-$1.70. Starting 10mg/day. Max: 80mg/day.\nRitalin LA: 20mg; $1.66. Starting 10-20mg/day. Max 80mg/day.\nConcerta: 18/27/36/54mg; $2.82-$3.95. Starting 18mg/day. Max: 72mg/day.","clinical_pearls":"Concerta has 20% lower bioavailability than methylphenidate. 15mg Ritalin = 18mg Concerta, 30mg Ritalin = 36mg Concerta.","healthhub_slug":"methylphenidate"},{"id":"lisdexamfetamine","name":"Lisdexamfetamine (Vyvanse)","category":"ADHD Medications","bottom_line":"May have a gentler, 'smoother' side effect profile than other amphetamines and a lower risk of diversion/abuse. However, cost is high.","mechanism":"Stimulant; dextroamphetamine with lysine bound to it, remains inactive until hydrolysis by red blood cells\nHalf life of active metabolite dextroamphetamine is 12 hours","indications":"FDA approval: ADHD (adults and children >=6 years); binge eating disorder (BED)\nOff label: Narcolepsy, Treatment resistant depression","side_effects":"Most common: Stomach discomfort/nausea, Headache, Loss of appetite and weight, Insomnia, Anxiety, Dry mouth\n\nSerious but rare:\n- Increase in blood pressure and heart rate\n- Tics\n- Worsening agitation\n- New or worsening psychosis\n\nPregnancy and Breastfeeding: Not recommended in breastfeeding","drug_interactions":"Avoid use with MAOIs\nAvoid antacids (alkaline) - decrease excretion\nAvoid vitamin C/acidic juices - increase excretion, decreasing efficacy","monitoring":"ECG (if history of cardiac disease)\nBMI, BP and HR","dosage":"IMH: Vyvanse 30/40/50/70mg; $4.29-$6.43\nStarting: 30mg, increase 10mg/d at weekly intervals. Range: 30-70mg. Max: 70mg.","clinical_pearls":"Warn patients to avoid vitamin C or orange juice - decreases levels.\nTaking with food delays onset slightly.","healthhub_slug":"lisdexamfetamine"},{"id":"alprazolam","name":"Alprazolam","category":"Anxiolytics / Benzodiazepines","bottom_line":"Fast acting, effective for short term treatment GAD and panic disorder. However, short duration of action leads to breakthrough symptoms, dependency and abuse potential.","mechanism":"Binds to Benzodiazepine receptors to enhance GABA effects\nMetabolized through CYP3A4, half life 11 hours","indications":"FDA approval: Acute treatment of GAD and Panic disorder\nOff label: Other anxiety disorders, insomnia, acute mania, catatonia","side_effects":"Most common: Sedation, Slurred speech, Incoordination, Memory impairment, Dependence\n\nSerious but rare:\n- Anterograde amnesia\n- Paradoxical disinhibition\n- Increased falls risk\n- Respiratory depression\n\nPregnancy and Breastfeeding: Potential risks, use caution","drug_interactions":"Avoid concurrent use with other CNS depressants including alcohol and opioids.\nPotent CYP3A4 inhibitors may increase levels","monitoring":"No routine monitoring","dosage":"IMH: Alprazolam (Xanax) 0.25mg; $0.25\nGAD: Starting: 0.25-0.5mg TDS. Max: 4mg/d.\nPanic disorder: Starting: 0.5mg TDS. Max 10mg/d.\nEquivalence: 0.5mg alprazolam = 10mg diazepam","clinical_pearls":"Very effective for GAD and panic disorder, especially in early weeks of SSRI therapy.\nParadoxical reaction more likely in the elderly or those with brain injury.","healthhub_slug":"alprazolam"},{"id":"clonazepam","name":"Clonazepam","category":"Anxiolytics / Benzodiazepines","bottom_line":"Longer half-life causes fewer breakthrough symptoms versus alprazolam. Good short-term hypnotic.","mechanism":"Binds to Benzodiazepine receptors to enhance GABA effects\nMetabolized through CYP3A4, half life 18-50 hours","indications":"FDA approval: Seizure disorder, Panic disorder\nOff label: Other anxiety disorders, insomnia, acute mania, catatonia","side_effects":"Most common: Sedation, Slurred speech, Incoordination, Memory impairment, Dependence\n\nSerious but rare:\n- Anterograde amnesia\n- Paradoxical disinhibition\n- Increased falls risk\n- Respiratory depression\n\nPregnancy and Breastfeeding: Potential risks, use caution","drug_interactions":"Avoid concurrent use with other CNS depressants.\nPotent CYP3A4 inhibitors may increase levels","monitoring":"No routine monitoring","dosage":"IMH: Clonazepam (Rivotril) 0.5mg; $0.37\nAnxiety: Starting: 0.5mg BD. Max: 6mg/d divided BD/TDS.\nInsomnia: Starting: 0.25-0.5mg BT PRN. Max: 2mg BT.\nEquivalence: 0.5mg clonazepam = 10mg diazepam","clinical_pearls":"Withdrawal effects may not be seen until 3-5 days after abrupt discontinuation due to long half life.","healthhub_slug":"clonazepam"},{"id":"diazepam","name":"Diazepam","category":"Anxiolytics / Benzodiazepines","bottom_line":"Long history of use with good efficacy for anxiety. Long half-life makes it particularly effective. Also used in alcohol withdrawal.","mechanism":"Binds to Benzodiazepine receptors to enhance GABA effects\nMetabolized through CYP3A4, active metabolite nordazepam has half life >100 hours","indications":"FDA approval: GAD, alcohol withdrawal, seizures, muscle spasms\nOff label: Other anxiety disorders, insomnia, acute mania, catatonia","side_effects":"Most common: Sedation, Slurred speech, Incoordination, Memory impairment, Dependence\n\nSerious but rare:\n- Anterograde amnesia\n- Paradoxical disinhibition\n- Increased falls risk\n- Respiratory depression\n\nPregnancy and Breastfeeding: Potential risks","drug_interactions":"Avoid concurrent use with other CNS depressants.\nPotent CYP3A4 inhibitors may increase levels","monitoring":"No routine monitoring","dosage":"IMH: Diazepam (Valium) 2/5/10mg tabs; $0.20\nAnxiety: Starting: 2-5mg BD. Max: 40mg/d divided BD-QDS.\nEquivalences: 10mg Diazepam = 1mg Lorazepam = 15mg Zopiclone = 20mg Zolpidem = 0.5mg Alprazolam/Clonazepam","clinical_pearls":"Tolerance to sedative effect develops more rapidly (within 2-4 weeks) than tolerance to anxiolytic effect.\nWithdrawal effects may not be seen until 3-5d after abrupt discontinuation.","healthhub_slug":"diazepam-oral"},{"id":"lorazepam","name":"Lorazepam","category":"Anxiolytics / Benzodiazepines","bottom_line":"First line agent when benzo is appropriate; preferred in hepatic impairment or when pregnancy is a concern.","mechanism":"Binds to Benzodiazepine receptors to enhance GABA effects\nPrimarily hepatic metabolism (non CYP450), half life 10-20 hrs","indications":"FDA approval: GAD, status epilepticus\nOff label: Other anxiety disorders, insomnia, acute mania, catatonia","side_effects":"Most common: Sedation, Slurred speech, Incoordination, Memory impairment, Dependence\n\nSerious but rare:\n- Anterograde amnesia\n- Paradoxical disinhibition\n- Increased falls risk\n- Respiratory depression\n\nPregnancy and Breastfeeding: Preferred in pregnancy/lactation due to lack of active metabolites","drug_interactions":"Avoid concurrent use with other CNS depressants.\nValproate can decrease lorazepam clearance","monitoring":"No routine monitoring","dosage":"IMH: Lorazepam (Ativan) 0.5/1mg tab; $0.20\nAnxiety: Starting: 0.5-1mg BD/TDS. Range: 2-6mg/d. Max: 10mg/d.\nInsomnia: Starting 0.5-1mg ON. Max: 4mg ON.\nEquivalence: 1mg lorazepam = 10mg diazepam","clinical_pearls":"Does not have active metabolites that could accumulate, no CYP450 drug interaction risk.\nSuitable for alcohol detox in liver dysfunction (Lorazepam for Liver damage).","healthhub_slug":"lorazepam"},{"id":"zolpidem","name":"Zolpidem","category":"Sleep Medications","bottom_line":"Original Z-drug. Effective for sleep onset and maintenance, less residual morning effects due to shorter half life.","mechanism":"Selective GABA-A alpha 1 subunit agonist\nMetabolized through CYP3A4","indications":"FDA approval: Insomnia (sleep onset and maintenance)","side_effects":"Most common: Headache, somnolence, dizziness, diarrhea\n\nSerious but rare:\n- Complex sleep related behaviour (sleep driving, cooking, eating)\n- Disinhibition\n\nPregnancy and Breastfeeding: Limited data suggests relative safety","drug_interactions":"Avoid concurrent use with other CNS depressants.\nPotent CYP3A4 inhibitors may increase levels","monitoring":"No routine monitoring","dosage":"IMH: Stilnox (CR) 6.25/12.5mg; $1.10, $1.93\nStarting: 6.25-12.5mg BT. Range: 6.25-12.5mg. Max: 12.5mg.\nTake immediately before bed with at least 7-8 hours remaining.","clinical_pearls":"Compared to benzos, preserves sleep stages (REM and deep sleep) better.\nCR formulation has dual layer for immediate + gradual release.","healthhub_slug":"zolpidem"},{"id":"zopiclone","name":"Zopiclone","category":"Sleep Medications","bottom_line":"Z-drug not FDA approved. Effective for sleep onset and maintenance, longer half life may provide more sustained sleep.","mechanism":"Non-selective GABA-A agonist\nMetabolized through CYP3A4 and CYP2C8","indications":"FDA approval: None (Eszopiclone is FDA approved for Insomnia)","side_effects":"Most common: Somnolence, Metallic/bitter taste, dry mouth, Nausea/vomiting, Dizziness, Headache\n\nSerious but rare:\n- Complex sleep related behaviour\n- Disinhibition\n\nPregnancy and Breastfeeding: Generally avoided","drug_interactions":"Avoid concurrent use with other CNS depressants.\nPotent CYP3A4 inhibitors may increase levels","monitoring":"No routine monitoring","dosage":"IMH: Imovane 7.5mg; $0.40\nStarting: 3.75-7.5mg BT. Range: 7.5mg. Max: 15mg.","clinical_pearls":"Bitter metallic taste is a frequent complaint.\nZopiclone half life (5-7 hours) vs Zolpidem (2.5 hours) - Zopiclone may provide more sustained sleep.","healthhub_slug":"zopiclone"},{"id":"lemborexant","name":"Lemborexant","category":"Sleep Medications","bottom_line":"Newer generation DORA FDA approved for sleep onset and sleep maintenance.","mechanism":"DORA: Dual Orexin (OX1 and OX2) receptor antagonist\nMetabolized through CYP3A4","indications":"FDA approval: Insomnia (sleep onset and maintenance)","side_effects":"Most common: Drowsiness, Dizziness, Headache\n\nSerious but rare:\n- Impaired alertness and motor coordination\n- Worsening depression or suicidal ideations\n- Complex sleep related behaviour\n- Sleep paralysis\n- Cataplexy-like symptoms\n- Contraindications: Narcolepsy\n\nPregnancy and Breastfeeding: Not enough data","drug_interactions":"Caution with CYP3A4 inhibitors and inducers\nCaution with alcohol and other CNS depressants","monitoring":"No routine monitoring","dosage":"IMH: Dayvigo 5mg; $2.14\nStarting: 5mg. Range: 5-10mg. Max: 10mg.\nStart 30 mins before bedtime, at least 7 hours before planned awakening.","clinical_pearls":"Risk of next day impairment increases with dose; caution at 10mg against next-day driving.","healthhub_slug":"lemborexant"},{"id":"prazosin","name":"Prazosin","category":"Sleep Medications","bottom_line":"Alpha-1 antagonist popular as treatment for PTSD associated insomnia/nightmares.","mechanism":"Alpha-1 adrenergic receptor antagonist\nPrimary hepatic metabolism (non CYP450)","indications":"FDA approval: Hypertension\nOff label: PTSD (insomnia, nightmares), Alcohol use disorder","side_effects":"Most common: Dizziness, Nausea, Sedation, Postural hypotension, Headache, Weakness\n\nSerious but rare:\n- Priapism (A&E if prolonged erection >4H)\n\nPregnancy and Breastfeeding: Insufficient data","drug_interactions":"Caution with other antihypertensive agents, diuretics, PDE5 inhibitors","monitoring":"Periodic blood pressure, postural blood pressure","dosage":"IMH: 1mg tab; $0.20\nPTSD: Starting: 1mg ON x 3/7 > 2mg ON > increase by 1mg ON/d weekly. Range: 1-5mg. Max: 5mg (up to 20mg/day in men, 12mg/day in women).\nTitrate slowly to minimize postural hypotension.","clinical_pearls":"Meta-analysis favors Prazosin for nightmares but NOT overall PTSD symptoms.\n2023 VA guidelines suggest for nightmares but not for overall PTSD symptoms.","healthhub_slug":"prazosin"},{"id":"propranolol","name":"Propranolol","category":"Sleep Medications","bottom_line":"Has several uses in psychiatry (performance anxiety, akathisia, drug-induced tremors). Favored as 'PRN' for anxiety when benzodiazepines are contraindicated.","mechanism":"Non-selective beta 1 and 2 adrenergic receptor antagonist\nMetabolized by CYP2D6, CYP1A2 and CYP2C19","indications":"FDA approval: Hypertension, Angina, Post-MI, Atrial fibrillation, Migraine prophylaxis, Essential tremor\nOff label: Performance anxiety, Tremor due to medication side effects, Akathisia","side_effects":"Most common: Dizziness, fatigue, bradycardia, hypotension, vivid dreams, sexual dysfunction\n\nPregnancy and Breastfeeding: Relatively safe","drug_interactions":"Caution with other antihypertensives\nCaution with CYP2D6 inhibitors (fluoxetine, paroxetine) and CYP1A2 inhibitors (fluvoxamine)","monitoring":"Periodic BP/HR","dosage":"IMH: 10/40mg tab; $0.20\nPerformance anxiety: 10mg 60 mins before performance.\nAkathisia: Start 10mg BD; Range: 30-40mg OD. Max: 90mg OD.\nMedication induced tremor: Start 10mg BD; Range: 30-40mg OD. Max: 120mg OD.","clinical_pearls":"Contraindicated in history of asthma, sinus bradycardia and heart block.","healthhub_slug":"propranolol"},{"id":"hydroxyzine","name":"Hydroxyzine","category":"Sleep Medications","bottom_line":"Non-addictive antihistamine; good option for rapid-acting anxiolytic or sedation; but monitor anticholinergic side effects.","mechanism":"Histamine H1 antagonist\nMetabolized through liver","indications":"FDA approval: Generalized Anxiety Disorder, Pruritus\nOff label: Other anxiety disorders, Insomnia","side_effects":"Most common: Sedation, Daytime grogginess, Dry mouth, Constipation, Headache\n\nSerious but rare: QTc prolongation; contraindicated in prolonged QTc\n\nPregnancy and Breastfeeding: Contraindicated in early pregnancy and breastfeeding","drug_interactions":"Avoid concomitant use with other antihistamines or anticholinergics","monitoring":"No routine monitoring","dosage":"IMH: Atarax 10/25mg; $0.20\nStarting: 10/25mg ON, increase by 25mg/d every 3-7d. Range: 25-100mg ON. Max: 100mg ON.","clinical_pearls":"On Beers Criteria (inappropriate medication in older adults due to anticholinergic burden and dementia risk).\nGenerally considered 2nd line in anxiety disorders.","healthhub_slug":"hydroxyzine"},{"id":"melatonin","name":"Melatonin","category":"Sleep Medications","bottom_line":"Short-term treatment modestly reduces time to fall asleep (~12mins) and does not significantly improve overall sleep time.","mechanism":"Melatonin receptor agonist\nMetabolized through CYP1A2","indications":"FDA approval: None\nOff label: Insomnia, jet lag, shift-work sleep disorder","side_effects":"Most common: Drowsiness, headache, dizziness, next-day grogginess, vivid dreams (higher doses)\n\nSerious but rare:\n- May exacerbate depressive symptoms\n\nPregnancy and Breastfeeding: Avoid in pregnancy","drug_interactions":"Fluvoxamine - potent CYP1A2 inhibitor that increases melatonin levels","monitoring":"No routine monitoring","dosage":"IMH: Circadin PR 2mg; $2.04\nStarting: 2mg. Range: 2mg. Max: 2mg. (Max duration: 13 weeks)\nOTC: 0.5-20mg. Jet lag: 1-3mg at bedtime for 3-5 days.","clinical_pearls":"OTC - 30 mins before bedtime ideal.\nIMH Circadin PR - 1-2 hours before bedtime, ideally with or after food.","healthhub_slug":"melatonin"},{"id":"donepezil","name":"Donepezil","category":"Dementia Medications","bottom_line":"Acetylcholinesterase inhibitor with good track record and tolerability. Generally considered 1st line agent for Alzheimer's dementia (AD). Delays dementia progression by 6-12 months.","mechanism":"Acetylcholinesterase inhibitor\nMetabolized through CYP2D6, 3A4","indications":"FDA approval: Mild/moderate AD (5/10mg), Moderate/Severe AD (10/23mg)\nOff label: Other memory disorders, mild cognitive impairment","side_effects":"Most common: Dose-related diarrhea, nausea, vomiting, weight loss, insomnia, abnormal dreams\n\nSerious but rare:\n- Bradycardia, prolonged QTc\n\nPregnancy and Breastfeeding: Not applicable","drug_interactions":"Avoid anticholinergic agents\nAvoid beta blockers - risk of bradycardia","monitoring":"Monitor HR/BMI","dosage":"IMH: 5/10mg tab; $0.40\nMild-Mod AD: Starting: 5mg OM, increase to 10mg OM after 4-6w. Max: 10mg.\nMod-Severe AD: Starting 10mg OM, may increase to 23mg OM after at least 3 months.","clinical_pearls":"Only acetylcholinesterase inhibitor with FDA approval for severe dementia.\nGI side effects usually resolve in 1-2 weeks.","healthhub_slug":"donepezil"},{"id":"galantamine","name":"Galantamine","category":"Dementia Medications","bottom_line":"No appreciable benefit over donepezil. Formulary option for switch if intolerable vivid dreams on donepezil.","mechanism":"Acetylcholinesterase inhibitor; also Positive allosteric modulator at nicotinic receptors\nMetabolized through CYP2D6, 3A4","indications":"FDA approval: Mild/moderate AD\nOff label: Other memory disorders, mild cognitive impairment","side_effects":"Most common: Dose-related diarrhea, nausea, vomiting, weight loss, insomnia\n\nSerious but rare:\n- Bradycardia, prolonged QTc\n\nPregnancy and Breastfeeding: Not applicable","drug_interactions":"Avoid anticholinergic agents\nAvoid beta blockers - risk of bradycardia","monitoring":"Monitor HR/BMI","dosage":"IMH: Reminyl 16mg PR capsule; $6.17\nStarting: 8mg OM, increase by 8mg/d every 4 weeks. Range: 16-24mg/d. Max: 24mg/d.","clinical_pearls":"16mg Galantamine = 10mg Donepezil.\nCANNOT start on 16mg Galantamine OM - only switch from donepezil.\nLesser vivid dreams as plasma concentration peaks during the day.","healthhub_slug":"galantamine"},{"id":"rivastigmine","name":"Rivastigmine","category":"Dementia Medications","bottom_line":"Available in patch form (for those who refuse medications or have difficulties swallowing). Oral form is second-line due to BD dosing and high rate of nausea/vomiting.","mechanism":"Acetylcholinesterase and butyrylcholinesterase inhibitor\nMetabolized extensively but minimal CYP enzymes","indications":"FDA approval: Mild/moderate/severe AD (patch), Dementia associated with Parkinson's disease","side_effects":"Most common: Dose-related diarrhea, nausea, vomiting, weight loss, insomnia\n\nSerious but rare:\n- Bradycardia, prolonged QTc\n\nPregnancy and Breastfeeding: Not applicable","drug_interactions":"Avoid anticholinergic agents\nAvoid beta blockers - risk of bradycardia","monitoring":"Monitor HR/BMI","dosage":"IMH: 1.5/3/4.5mg capsule; $2.60 | Exelon 4.6/9.5/13.3mg/24H patch; $4.60\nCapsule: Starting: 1.5mg BD, increase by 1.5mg BD every 4w. Max: 6mg BD.\nPatch: Mild-moderate AD: Start 4.6mg/24hr, increase to 9.5mg/24hr after 4 weeks.\nSevere AD: Start and max: 13.3mg/24hr.","clinical_pearls":"Only AChEI with additional indication for Parkinson's related dementia.\nTransdermal patches cause less nausea and vomiting.\nPreferred in both hepatic and renal dysfunction.","healthhub_slug":"rivastigmine"},{"id":"memantine","name":"Memantine","category":"Dementia Medications","bottom_line":"Indication for mod-severe dementia only. Unique mechanism and data to support usefulness in augmenting donepezil.","mechanism":"NMDA receptor antagonist\nHepatic metabolism but not CYP450; primarily renal excretion","indications":"FDA approval: Moderate-severe AD\nOff label: Mild-moderate AD. Other memory disorders.","side_effects":"Most common: Transient confusion, constipation, sedation, dizziness\n\nSerious but rare: Hallucinations, mood changes\n\nPregnancy and Breastfeeding: Not applicable","drug_interactions":"Avoid other NMDA antagonists - amantadine, ketamine, dextromethorphan","monitoring":"Renal function; If CrCl <30ml/Min, max dose is 5mg BD","dosage":"IMH: Ebixa IR 10mg tab; $0.40\nStarting: 5mg OM x 1/52 > 5mg BD x 1/52 > 10mg OM + 5mg ON x 1/52 > 10mg BD. Max: 20mg.","clinical_pearls":"Frequently augmented with Donepezil.","healthhub_slug":"memantine"}];
+const DEPOT_DATA = [{"id":"clopixol","name":"Clopixol","subtitle":"Zuclopenthixol Decanoate · Typical","type":"Typical","sections":[{"label":"Starting","text":"Initial IM: D1 — 100mg (test dose) then D8 — actual dose (1 week later)\nE.g. Clopixol 100mg (day 1), then 200mg Q4w (day 8 onwards)"},{"label":"Usual Range","text":"200–400mg Q2–4w. Max: 600mg/week."},{"label":"Clinical Pearls","text":"Sedating profile — for agitated, manic patient (C = Calm down)"}]},{"id":"fluanxol","name":"Fluanxol","subtitle":"Flupentixol Decanoate · Typical","type":"Typical","sections":[{"label":"Starting","text":"Initial IM: D1 — 20mg (test dose) then D8 — actual dose (1 week later)\nE.g. Fluanxol 20mg (day 1), then 50mg Q4w (day 8 onwards)"},{"label":"Usual Range","text":"50–300mg Q2–4w. Max: 400mg/week"},{"label":"Clinical Pearls","text":"Activating profile — for negative symptoms (avoid in agitated, manic patients)"}]},{"id":"haldol","name":"Haldol Decanoate","subtitle":"Haloperidol · Typical","type":"Typical","sections":[{"label":"Starting (With Oral Overlap)","text":"Initial IM: 10–15x daily oral haloperidol dose.\nIf >100mg, administer in 2 divided injections; balance dose 3–7 days later. If >400mg, 3 divided doses every 3–7 days. Max total initial dose 450mg.\n+Oral overlap: Continue for 1–2 months after initial dose, then decrease oral dose by 25% each week over 1 month."},{"label":"Starting (Without Oral Overlap)","text":"Start at 20x the daily oral dose.\nMay reduce dose by no more than 50mg/4 week, aiming 10–15x daily oral haloperidol dose."},{"label":"Usual Range","text":"50–300mg Q4w OR 10–15x daily PO haloperidol dose. Uptitrate by <50mg Q4w. Max: 450mg/4w."},{"label":"Clinical Pearls","text":"Neutral profile; High risk of EPSE and dystonia."}]},{"id":"modecate","name":"Modecate","subtitle":"Fluphenazine Decanoate · Typical","type":"Typical","sections":[{"label":"Starting","text":"Initial IM: D1 — 12.5mg (test dose) then D8 — actual dose (1 week later)\nE.g. Fluphenazine 12.5mg (day 1), then 25mg Q4w (day 8 onwards)"},{"label":"Usual Range","text":"12.5–75mg Q2–6w. Max: 100mg/2 weeks."},{"label":"Clinical Pearls","text":"Neutral profile. Rarely started (legacy med). Painful. High risk of EPSE/TD."}]},{"id":"abilify-maintena","name":"Abilify Maintena","subtitle":"Aripiprazole Q1m · Atypical","type":"Atypical","sections":[{"label":"Initiation","text":"Establish tolerability with PO Abilify 10mg/d for 2 weeks prior.\n\nRegimen 1 [1 injection + 2 week overlap]:\nIM 400mg + 2 week overlap of PO Abilify 10–20mg/d, then stop.\n\nRegimen 2 [2 injections + 1 dose, no overlap]:\nIM 400mg x 2 injections at 2 separate sites + one dose PO 20mg, then stop.\n\nNote: IM 300mg/Q4w = PO 15–20mg/d; IM 400mg/Q4w = PO 20–30mg/d"},{"label":"Usual Range","text":"IM 400mg/month (not sooner than 26 days after previous injection).\nIM 300mg/month if not tolerating 400mg. Max: 400mg/month."},{"label":"Notes","text":"Restart with regimen 1/2 if missed depot for > 6 weeks."}]},{"id":"invega-sustenna","name":"Invega Sustenna","subtitle":"Paliperidone Q1m · Atypical","type":"Atypical","sections":[{"label":"Initiation","text":"Establish tolerability with PO paliperidone or PO/IM risperidone prior.\n\nRegimen: IM 150mg (Day 1), then IM 100mg (Day 8 ±2 days), 3rd dose on day 36 (week 5), maintenance monthly ±7 days.\nD1 and D8 MUST be given in deltoid; D36 onwards can be deltoid or gluteal. No oral overlap needed."},{"label":"Usual Range","text":"IM 50–150mg/month. Max: 150mg/month."}]},{"id":"invega-trinza","name":"Invega Trinza","subtitle":"Paliperidone Q3m · Atypical","type":"Atypical","sections":[{"label":"Initiation","text":"Only after ≥4 doses of monthly IM Paliperidone (Invega Sustenna), with last 2 doses of same strength.\nRefer to Invega Sustenna dosing for conversion."},{"label":"Usual Range","text":"IM 175–525mg/3 months ±2 weeks. Max: 525mg/3 months."}]},{"id":"risperdal-consta","name":"Risperdal Consta","subtitle":"Risperidone Q2w · Atypical","type":"Atypical","sections":[{"label":"Initiation","text":"Establish tolerability with PO risperidone prior.\nPO Risperidone ≤4mg/day: IM 25mg/2w\nPO Risperidone >4mg/day: IM 37.5mg/2w\n3 week overlap with PO risperidone needed."},{"label":"Usual Range","text":"IM 25–50mg/2 weeks. Max: 50mg/2 weeks."}]}];
+
+const SECTION_DEFS = [
+  {key:'mechanism', icon:'&#9655;', label:'Mechanism'},
+  {key:'indications', icon:'&#9654;', label:'Indications'},
+  {key:'side_effects', icon:'&#9888;', label:'Side Effects'},
+  {key:'drug_interactions', icon:'&#9888;', label:'Drug Interactions'},
+  {key:'monitoring', icon:'&#9642;', label:'Monitoring'},
+  {key:'dosage', icon:'&#9679;', label:'Dosage'},
+  {key:'clinical_pearls', icon:'&#9670;', label:'Clinical Pearls'}
+];
+const DEFAULT_OPEN = {side_effects:true, dosage:true};
+
+const state = { activeId: null };
+const MED_BY_ID = MED_DATA.reduce((acc, med) => {
+  acc[med.id] = med;
+  return acc;
+}, {});
+const DEPOT_BY_ID = DEPOT_DATA.reduce((acc, depot) => {
+  acc[depot.id] = depot;
+  return acc;
+}, {});
+
+// ── THEME ──────────────────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('medref-theme') || 'light';
+  if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); syncThemeBtn(true); }
+})();
+function syncThemeBtn(isDark) {
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.classList.toggle('dark', isDark);
+  document.getElementById('themeLabel').textContent = isDark ? 'Light' : 'Dark';
+}
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('medref-theme','light'); syncThemeBtn(false); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('medref-theme','dark'); syncThemeBtn(true); }
+}
+
+// ── MOBILE SIDEBAR ──────────────────────────────────────────────────────
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobileOverlay').classList.toggle('visible');
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobileOverlay').classList.remove('visible');
+}
+
+// ── BUILD SIDEBAR ──────────────────────────────────────────────────────
+function groupBy(arr, key) {
+  return arr.reduce((acc, item) => { (acc[item[key]] = acc[item[key]] || []).push(item); return acc; }, {});
+}
+
+function buildSidebar(meds, depots) {
+  const nav = document.getElementById('sidebarNav');
+  nav.innerHTML = '';
+  const cats = groupBy(meds, 'category');
+
+  if (Object.keys(cats).length === 0 && depots.length === 0) {
+    nav.innerHTML = '<p class="no-results">No medications found.</p>';
+    return;
+  }
+
+  for (const [cat, items] of Object.entries(cats)) {
+    const group = document.createElement('div');
+    group.className = 'cat-group';
+    const details = document.createElement('details');
+    details.open = true;
+    const summary = document.createElement('summary');
+    summary.innerHTML = cat + '<span class="cat-count">' + items.length + '</span><span class="cat-chevron">&#9658;</span>';
+    details.appendChild(summary);
+    const ul = document.createElement('ul');
+    ul.className = 'med-list';
+    items.forEach(med => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.className = 'med-item' + (state.activeId === med.id ? ' active' : '');
+      btn.textContent = med.name;
+      btn.dataset.id = med.id;
+      btn.onclick = () => { selectMed(med.id); closeMobileSidebar(); };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    details.appendChild(ul);
+    group.appendChild(details);
+    nav.appendChild(group);
+  }
+
+  // Depots as separate category
+  if (depots.length > 0) {
+    const group = document.createElement('div');
+    group.className = 'cat-group';
+    const details = document.createElement('details');
+    details.open = true;
+    const summary = document.createElement('summary');
+    summary.innerHTML = '&#128137; Depots / LAIs<span class="cat-count">' + depots.length + '</span><span class="cat-chevron">&#9658;</span>';
+    details.appendChild(summary);
+    const ul = document.createElement('ul');
+    ul.className = 'med-list';
+    depots.forEach(depot => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      const depotKey = '__depot_' + depot.id + '__';
+      btn.className = 'med-item' + (state.activeId === depotKey ? ' active' : '');
+      btn.dataset.id = depotKey;
+      btn.classList.add('med-item--depot');
+      btn.innerHTML = '<span class="depot-name">' + depot.name + '</span><span class="depot-sub">' + depot.subtitle + '</span>';
+      btn.onclick = () => { selectDepot(depot.id); closeMobileSidebar(); };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    details.appendChild(ul);
+    group.appendChild(details);
+    nav.appendChild(group);
+  }
+}
+
+buildSidebar(MED_DATA, DEPOT_DATA);
+
+// ── SEARCH ─────────────────────────────────────────────────────────────
+function filterMeds(q) {
+  const lq = q.toLowerCase().trim();
+  if (!lq) { buildSidebar(MED_DATA, DEPOT_DATA); syncActiveBtn(); return; }
+  const filteredMeds = MED_DATA.filter(m => m.name.toLowerCase().includes(lq) || m.category.toLowerCase().includes(lq));
+  const filteredDepots = DEPOT_DATA.filter(d => d.name.toLowerCase().includes(lq) || d.subtitle.toLowerCase().includes(lq) || 'depot lai injectable'.includes(lq));
+  buildSidebar(filteredMeds, filteredDepots);
+  syncActiveBtn();
+}
+function syncActiveBtn() {
+  if (!state.activeId) return;
+  const btn = document.querySelector('.med-item[data-id="' + state.activeId + '"]');
+  if (btn) btn.classList.add('active');
+}
+
+// ── SELECT MED ─────────────────────────────────────────────────────────
+function selectMed(id) {
+  const med = MED_BY_ID[id];
+  if (!med) return;
+  state.activeId = id;
+  document.querySelectorAll('.med-item').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  document.getElementById('welcomeScreen').style.display = 'none';
+  const display = document.getElementById('medDisplay');
+  display.style.display = 'block';
+  display.innerHTML = renderMed(med);
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function renderMed(med) {
+  const hh = med.healthhub_slug ? 'https://www.healthhub.sg/a-z/medications/' + med.healthhub_slug : null;
+  const cleanName = med.name.replace(/\s*\(.*?\)\s*/g, '').trim().split(' ')[0].toLowerCase();
+  const utdUrl = 'https://www.uptodate.com/contents/' + cleanName + '-drug-information';
+  let h = '<div class="med-sticky-header">';
+  h += '<h1>' + esc(med.name) + '</h1>';
+  h += '<span class="cat-pill">' + esc(med.category) + '</span>';
+  h += '<div class="header-actions">';
+  h += '<button class="btn-copy" id="copyBtn" onclick="copySideEffects()">Copy Side Effects (S)</button>';
+  h += '<a class="btn-hh" href="' + utdUrl + '" target="_blank">UpToDate (U)</a>';
+  if (hh) h += '<a class="btn-hh" href="' + hh + '" target="_blank">HealthHub (H)</a>';
+  h += '</div></div>';
+  if (med.bottom_line) {
+    h += '<div class="bottom-line-card"><strong>Bottom Line</strong>' + esc(med.bottom_line) + '</div>';
+  }
+  h += '<div class="sections-container">';
+  SECTION_DEFS.forEach(({key, icon, label}) => {
+    if (!med[key]) return;
+    const isOpen = DEFAULT_OPEN[key] ? 'open' : '';
+    h += '<details class="section-details" ' + isOpen + ' data-section="' + key + '">';
+    h += '<summary class="section-summary"><span class="section-icon">' + icon + '</span>' + label + '<span class="section-chevron">&#9658;</span></summary>';
+    h += '<div class="section-body">' + renderSectionContent(key, med[key]) + '</div>';
+    h += '</details>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function renderSectionContent(key, raw) {
+  let e = esc(raw);
+  if (key === 'side_effects') {
+    e = e.replace(/Most common:/g, '<span class="label-highlight">Most common:</span>');
+    e = e.replace(/Serious but rare:/g, '<span class="label-serious">Serious but rare:</span>');
+    e = e.replace(/Serious but rare(?!:)/g, '<span class="label-serious">Serious but rare</span>');
+    e = e.replace(/Most common(?!:)/g, '<span class="label-highlight">Most common</span>');
+  }
+  return e;
+}
+
+// ── SELECT DEPOT ────────────────────────────────────────────────────────
+function selectDepot(id) {
+  const depot = DEPOT_BY_ID[id];
+  if (!depot) return;
+  const key = '__depot_' + id + '__';
+  state.activeId = key;
+  document.querySelectorAll('.med-item').forEach(b => b.classList.toggle('active', b.dataset.id === key));
+  document.getElementById('welcomeScreen').style.display = 'none';
+  const display = document.getElementById('medDisplay');
+  display.style.display = 'block';
+  display.innerHTML = renderDepotPage(depot);
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function renderDepotPage(depot) {
+  const typeClass = depot.type === 'Typical' ? 'typical' : 'atypical';
+  let h = '<div class="med-sticky-header">';
+  h += '<h1>&#128137; ' + esc(depot.name) + '</h1>';
+  h += '<span class="cat-pill">' + esc(depot.subtitle) + '</span>';
+  h += '</div>';
+  h += '<div class="sections-container">';
+  h += '<details class="section-details" open>';
+  h += '<summary class="section-summary"><span class="section-icon">&#128137;</span>' + esc(depot.name);
+  h += '<span class="depot-type-pill ' + typeClass + '">' + depot.type + '</span>';
+  h += '<span class="section-chevron">&#9658;</span></summary>';
+  h += '<div class="section-body section-body--normal">';
+  depot.sections.forEach(s => {
+    h += '<div class="depot-section-item"><span class="depot-section-label">' + esc(s.label) + '</span>';
+    h += '<div class="depot-section-text">' + esc(s.text) + '</div></div>';
+  });
+  h += '</div></details></div>';
+  return h;
+}
+
+// ── COPY SIDE EFFECTS ───────────────────────────────────────────────────
+function copySideEffects() {
+  const med = MED_BY_ID[state.activeId];
+  if (!med || !med.side_effects) return;
+  const lines = med.side_effects.split('\n');
+  const filtered = lines.filter(l => !l.toLowerCase().includes('pregnancy') && !l.toLowerCase().includes('breastfeeding'));
+  while (filtered.length && !filtered[filtered.length-1].trim()) filtered.pop();
+  navigator.clipboard.writeText(filtered.join('\n').trim()).then(() => {
+    const btn = document.getElementById('copyBtn');
+    if (btn) { btn.classList.add('copied'); btn.textContent = 'Copied!'; setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy Side Effects'; }, 2000); }
+    showToast('Side effects copied!');
+  }).catch(() => showToast('Copy failed'));
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── FAB ────────────────────────────────────────────────────────────────
+const mainEl = document.getElementById('mainContent');
+mainEl.addEventListener('scroll', () => {
+  document.getElementById('fabTop').classList.toggle('visible', mainEl.scrollTop > 300);
+});
+function scrollMainToTop() { mainEl.scrollTo({top:0,behavior:'smooth'}); }
+
+// ── UTILITY ────────────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+<script>
+// 1. A global Set to remember the titles of the sections that are currently open.
+const openSections = new Set();
+let isFirstRender = true;
+
+// 2. Listen for the 'toggle' event on all <details> elements.
+// We use the capture phase (true) because 'toggle' events do not bubble up the DOM.
+document.addEventListener('toggle', (e) => {
+  if (e.target.tagName === 'DETAILS') {
+    const summary = e.target.querySelector('summary');
+    if (summary) {
+      // Use the summary text (e.g., "Side Effects") as the unique identifier
+      const sectionTitle = summary.textContent.trim();
+      
+      if (e.target.open) {
+        openSections.add(sectionTitle);
+      } else {
+        openSections.delete(sectionTitle);
+      }
+    }
+  }
+}, true);
+
+// 3. Automatically apply the tracked states to newly rendered sections.
+const medDisplayContainer = document.getElementById('medDisplay');
+
+if (medDisplayContainer) {
+  const observer = new MutationObserver(() => {
+    const detailsElements = medDisplayContainer.querySelectorAll('details');
+    
+    if (isFirstRender && detailsElements.length > 0) {
+      // On the very first medication loaded, record whatever is open by default
+      detailsElements.forEach(details => {
+        if (details.open) {
+          const summary = details.querySelector('summary');
+          if (summary) openSections.add(summary.textContent.trim());
+        }
+      });
+      isFirstRender = false;
+    } else {
+      // On subsequent medications, force the sections to match the synchronized state
+      detailsElements.forEach(details => {
+        const summary = details.querySelector('summary');
+        if (summary) {
+          const sectionTitle = summary.textContent.trim();
+          // This will open or close the section based on whether it's in our Set
+          details.open = openSections.has(sectionTitle);
+        }
+      });
+    }
+  });
+
+  // Watch the #medDisplay container for any HTML changes (like switching medications)
+  observer.observe(medDisplayContainer, { childList: true, subtree: true });
+}
+</script>
+<script>
+// 1. Remove "IMH" from the titles
+// Updates the browser tab title
+document.title = document.title.replace(/IMH Clinical Tool/i, 'Clinical Tool');
+
+// Updates the subtitle text under the logo
+document.querySelectorAll('.topbar-sub').forEach(el => {
+  if (el.textContent.toLowerCase().includes('imh clinical tool')) {
+    el.textContent = 'Clinical Tool';
+  }
+});
+
+// 2. Add visual focus styles so users know which item is selected via keyboard
+const focusStyle = document.createElement('style');
+focusStyle.textContent = `
+  .med-item:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    background: var(--sidebar-item-hover);
+  }
+`;
+document.head.appendChild(focusStyle);
+
+// 3. Keyboard Navigation (Up/Down/Enter)
+document.addEventListener('keydown', (e) => {
+  if (!['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) return;
+
+  const searchInput = document.getElementById('searchInput');
+  
+  // Only target medication items that are currently visible (i.e. category is expanded)
+  const visibleItems = Array.from(document.querySelectorAll('.med-item')).filter(el => {
+    return el.offsetWidth > 0 && el.offsetHeight > 0;
+  });
+
+  const activeElement = document.activeElement;
+  const currentIndex = visibleItems.indexOf(activeElement);
+
+  if (e.key === 'ArrowDown') {
+    // If focused on the search box, arrow down jumps to the first medication
+    if (activeElement === searchInput) {
+      e.preventDefault();
+      if (visibleItems.length > 0) visibleItems[0].focus();
+    } 
+    // If focused on a medication, jump to the next one
+    else if (currentIndex >= 0 && currentIndex < visibleItems.length - 1) {
+      e.preventDefault();
+      visibleItems[currentIndex + 1].focus();
+    }
+  } 
+  else if (e.key === 'ArrowUp') {
+    // If focused on the first medication, arrow up jumps back to the search box
+    if (currentIndex === 0) {
+      e.preventDefault();
+      searchInput.focus();
+    } 
+    // If focused on a medication, jump to the previous one
+    else if (currentIndex > 0) {
+      e.preventDefault();
+      visibleItems[currentIndex - 1].focus();
+    }
+  } 
+  else if (e.key === 'Enter') {
+    // Pressing Enter simulates a click on the currently focused medication
+    if (currentIndex >= 0) {
+      e.preventDefault();
+      visibleItems[currentIndex].click();
+    }
+  }
+});
+</script>
+<script>
+// 4. Global Search Shortcut ('/' key)
+document.addEventListener('keydown', (e) => {
+  // Check if the '/' key was pressed
+  if (e.key === '/') {
+    // Check what element is currently focused
+    const activeTag = document.activeElement.tagName.toLowerCase();
+    
+    // If the user is already typing inside an input box (like the search bar) 
+    // or a text area, let them type the '/' character normally.
+    if (activeTag !== 'input' && activeTag !== 'textarea') {
+      e.preventDefault(); // Stops the '/' character from actually being typed into the box
+      const searchInput = document.getElementById('searchInput');
+      
+      if (searchInput) {
+        searchInput.focus();
+        
+        // Optional: If you are on mobile, this will also open the sidebar so you can see the search
+        if (document.body.classList.contains('mobile-mode') || window.innerWidth <= 768) {
+          document.getElementById('sidebar').classList.add('open');
+          document.getElementById('mobileOverlay').classList.add('visible');
+        }
+      }
+    }
+  }
+});
+</script>
+<script>
+// 5. Update the search bar placeholder text
+const searchInputEl = document.getElementById('searchInput');
+if (searchInputEl) {
+  searchInputEl.placeholder = "Type to search or press '/'";
+}
+</script>
+
+<script>
+// --- EXPAND / COLLAPSE ALL FEATURE (UPDATED WITH LABELS) ---
+
+// 1. Add Expand/Collapse buttons to the Sidebar (below the search bar)
+function addSidebarToggles() {
+  const sidebarSearch = document.querySelector('.sidebar-search');
+  if (!sidebarSearch || document.getElementById('sidebarToggleContainer')) return;
+
+  const toggleContainer = document.createElement('div');
+  toggleContainer.id = 'sidebarToggleContainer';
+  toggleContainer.className = 'sidebar-toggle-row';
+
+  const expandBtn = document.createElement('button');
+  expandBtn.className = 'sidebar-toggle-btn';
+  // Updated label and added hover tooltip
+  expandBtn.innerHTML = '&#8609; Expand All (E)';
+  expandBtn.title = "Keyboard Shortcut: E";
+  expandBtn.onclick = () => document.querySelectorAll('#sidebarNav details').forEach(d => d.open = true);
+
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'sidebar-toggle-btn';
+  // Updated label and added hover tooltip
+  collapseBtn.innerHTML = '&#8607; Collapse All (C)';
+  collapseBtn.title = "Keyboard Shortcut: C";
+  collapseBtn.onclick = () => document.querySelectorAll('#sidebarNav details').forEach(d => d.open = false);
+
+  toggleContainer.appendChild(expandBtn);
+  toggleContainer.appendChild(collapseBtn);
+  sidebarSearch.appendChild(toggleContainer);
+}
+
+// 2. Add an Expand/Collapse button to the Medication Details header
+function addExpandCollapseToHeader() {
+  const header = document.querySelector('.med-sticky-header');
+  if (!header) return;
+  
+  let actions = header.querySelector('.header-actions');
+  if (!actions) {
+    actions = document.createElement('div');
+    actions.className = 'header-actions';
+    header.appendChild(actions);
+  }
+  
+  // Remove if it already exists to prevent duplicates
+  const existing = document.getElementById('notesToggleBtn');
+  if (existing) existing.remove();
+  
+  const btn = document.createElement('button');
+  btn.id = 'notesToggleBtn';
+  btn.className = 'btn-copy'; 
+  btn.innerHTML = '&#8597; Toggle Sections (T)';
+  
+  btn.onclick = () => {
+    const detailsElements = document.querySelectorAll('.sections-container details');
+    if (detailsElements.length === 0) return;
+    
+    // Check the first section to decide whether we are opening or closing them all
+    const shouldOpen = !detailsElements[0].open;
+    
+    detailsElements.forEach(details => {
+      details.open = shouldOpen;
+      
+      // Update the global openSections Set from our synchronization script
+      const summary = details.querySelector('summary');
+      if (summary && typeof openSections !== 'undefined') {
+        const sectionTitle = summary.textContent.trim();
+        if (shouldOpen) {
+          openSections.add(sectionTitle);
+        } else {
+          openSections.delete(sectionTitle);
+        }
+      }
+    });
+  };
+  
+  // Insert it at the beginning of the actions row
+  actions.insertBefore(btn, actions.firstChild);
+}
+
+// 3. Hook into your existing functions
+if (!window.expandHookAdded) {
+  const existingSelectMedExpand = window.selectMed;
+  window.selectMed = function(id) {
+    existingSelectMedExpand(id);
+    addExpandCollapseToHeader();
+  };
+
+  const existingSelectDepotExpand = window.selectDepot;
+  window.selectDepot = function(id) {
+    existingSelectDepotExpand(id);
+    addExpandCollapseToHeader();
+  };
+  window.expandHookAdded = true;
+}
+
+// 4. Initialize the sidebar buttons on page load
+addSidebarToggles();
+</script>
+<script>
+// --- FAVORITES / BOOKMARKING FEATURE (UPDATED) ---
+
+// 1. Helper functions to save and load favorites securely from LocalStorage
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('medref-favorites')) || []; } 
+  catch (e) { return []; }
+}
+
+function toggleFavorite(id) {
+  let favs = getFavorites();
+  if (favs.includes(id)) {
+    favs = favs.filter(f => f !== id);
+  } else {
+    favs.push(id);
+  }
+  localStorage.setItem('medref-favorites', JSON.stringify(favs));
+}
+
+// 2. Inject the Favorite STAR directly into the H1 title
+function addFavoriteButtonToHeader(id) {
+  const header = document.querySelector('.med-sticky-header');
+  if (!header) return;
+  
+  const h1 = header.querySelector('h1');
+  if (!h1) return;
+  
+  // Remove any existing star to prevent duplicates when clicking
+  const existing = h1.querySelector('.btn-fav-star');
+  if (existing) existing.remove();
+
+  // Clean up the old blocky button from the actions menu if it's still lingering
+  const oldBtn = header.querySelector('.btn-fav');
+  if (oldBtn) oldBtn.remove();
+  
+  const isFav = getFavorites().includes(id);
+  
+  const btn = document.createElement('button');
+  btn.className = 'btn-fav-star';
+  if (isFav) btn.classList.add('is-active');
+  btn.innerHTML = isFav ? '&#11088;' : '&#9734;'; // Solid star vs empty star
+  btn.title = isFav ? 'Remove from Favorites' : 'Add to Favorites';
+  
+  // When clicked, toggle state, rebuild button, and refresh the sidebar
+  btn.onclick = () => {
+    toggleFavorite(id);
+    addFavoriteButtonToHeader(id); 
+    
+    const searchTerm = document.getElementById('searchInput').value;
+    filterMeds(searchTerm); 
+    
+    showToast(isFav ? 'Removed from Favorites' : 'Added to Favorites');
+  };
+  
+  // Append the star directly inside the H1 tag
+  h1.appendChild(btn);
+}
+
+// 3. Hook into your existing functions
+// (Using a flag to ensure we don't double-hook if the script re-runs)
+if (!window.favHookAdded) {
+  const originalSelectMedFav = window.selectMed;
+  window.selectMed = function(id) {
+    originalSelectMedFav(id);
+    addFavoriteButtonToHeader(id);
+  };
+
+  const originalSelectDepotFav = window.selectDepot;
+  window.selectDepot = function(id) {
+    originalSelectDepotFav(id);
+    const depotKey = '__depot_' + id + '__';
+    addFavoriteButtonToHeader(depotKey);
+  };
+
+  const originalBuildSidebarFav = window.buildSidebar;
+  window.buildSidebar = function(meds, depots) {
+    originalBuildSidebarFav(meds, depots);
+    
+    const favIds = getFavorites();
+    if (favIds.length === 0) return;
+    
+    const favMeds = meds.filter(m => favIds.includes(m.id));
+    const favDepots = depots.filter(d => favIds.includes('__depot_' + d.id + '__'));
+    
+    if (favMeds.length === 0 && favDepots.length === 0) return;
+    
+    const nav = document.getElementById('sidebarNav');
+    const group = document.createElement('div');
+    group.className = 'cat-group';
+    
+    const details = document.createElement('details');
+    details.open = true; 
+    
+    const summary = document.createElement('summary');
+    const count = favMeds.length + favDepots.length;
+    summary.innerHTML = '&#11088; Favorites<span class="cat-count">' + count + '</span><span class="cat-chevron">&#9658;</span>';
+    details.appendChild(summary);
+    
+    const ul = document.createElement('ul');
+    ul.className = 'med-list';
+    
+    favMeds.forEach(med => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.className = 'med-item' + (state.activeId === med.id ? ' active' : '');
+      btn.textContent = med.name;
+      btn.dataset.id = med.id;
+      btn.onclick = () => { selectMed(med.id); closeMobileSidebar(); };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    
+    favDepots.forEach(depot => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      const depotKey = '__depot_' + depot.id + '__';
+      btn.className = 'med-item' + (state.activeId === depotKey ? ' active' : '');
+      btn.dataset.id = depotKey;
+      btn.classList.add('med-item--depot');
+      btn.innerHTML = '<span class="depot-name">' + depot.name + '</span><span class="depot-sub">' + depot.subtitle + '</span>';
+      btn.onclick = () => { selectDepot(depot.id); closeMobileSidebar(); };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    
+    details.appendChild(ul);
+    group.appendChild(details);
+    nav.prepend(group);
+  };
+  
+  window.favHookAdded = true;
+}
+
+// 4. Trigger an initial sidebar rebuild
+buildSidebar(MED_DATA, DEPOT_DATA);
+</script>
+<script>
+// --- SIDEBAR / SECTION SHORTCUTS ('E', 'C', 'T', 'S', 'U', and 'H') ---
+document.addEventListener('keydown', (e) => {
+  // 1. Check what element the user is currently focused on
+  const activeTag = document.activeElement.tagName.toLowerCase();
+  
+  // 2. If they are typing in the search box (or any input), ignore the shortcut
+  if (activeTag === 'input' || activeTag === 'textarea') return;
+
+  // 3. 'E' key to Expand All in the sidebar
+  if (e.key.toLowerCase() === 'e') {
+    const details = document.querySelectorAll('#sidebarNav details');
+    if (details.length > 0) {
+      details.forEach(d => d.open = true);
+      showToast('Sidebar Expanded');
+    }
+  }
+  
+  // 4. 'C' key to Collapse All in the sidebar
+  if (e.key.toLowerCase() === 'c') {
+    const details = document.querySelectorAll('#sidebarNav details');
+    if (details.length > 0) {
+      details.forEach(d => d.open = false);
+      showToast('Sidebar Collapsed');
+    }
+  }
+
+  // 5. 'T' key to Toggle all sections in the medication details area
+  if (e.key.toLowerCase() === 't') {
+    const detailsElements = document.querySelectorAll('.sections-container details');
+    if (detailsElements.length > 0) {
+      const shouldOpen = !detailsElements[0].open;
+      detailsElements.forEach(details => {
+        details.open = shouldOpen;
+        const summary = details.querySelector('summary');
+        if (summary && typeof openSections !== 'undefined') {
+          const sectionTitle = summary.textContent.trim();
+          if (shouldOpen) {
+            openSections.add(sectionTitle);
+          } else {
+            openSections.delete(sectionTitle);
+          }
+        }
+      });
+      showToast(shouldOpen ? 'Sections Expanded' : 'Sections Collapsed');
+    }
+  }
+
+  // 6. 'S' key to copy side effects for the active medication
+  if (e.key.toLowerCase() === 's') {
+    copySideEffects();
+  }
+
+  // 7. 'U' key to open UpToDate link for the active medication
+  if (e.key.toLowerCase() === 'u') {
+    const utdLink = Array.from(document.querySelectorAll('.med-sticky-header .btn-hh'))
+      .find(a => a.textContent.toLowerCase().includes('uptodate'));
+    if (utdLink && utdLink.href) {
+      window.open(utdLink.href, '_blank');
+    }
+  }
+
+  // 8. 'H' key to open HealthHub link for the active medication (if present)
+  if (e.key.toLowerCase() === 'h') {
+    const hhLink = Array.from(document.querySelectorAll('.med-sticky-header .btn-hh'))
+      .find(a => a.textContent.toLowerCase().includes('healthhub'));
+    if (hhLink && hhLink.href) {
+      window.open(hhLink.href, '_blank');
+    }
+  }
+
+});
+</script>
+
+</body>
+</html>
